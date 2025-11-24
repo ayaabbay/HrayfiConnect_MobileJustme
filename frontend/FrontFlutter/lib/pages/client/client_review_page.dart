@@ -24,8 +24,10 @@ class _ClientReviewPageState extends State<ClientReviewPage> {
   double _rating = 0.0;
   Artisan? _selectedArtisan;
   Booking? _selectedBooking;
+  List<Booking> _completedBookings = [];
   bool _isLoading = true;
   bool _isSubmitting = false;
+  bool _isLoadingBookings = false;
   String? _error;
 
   @override
@@ -124,7 +126,11 @@ class _ClientReviewPageState extends State<ClientReviewPage> {
       if (selected != null) {
         setState(() {
           _selectedArtisan = selected;
+          _selectedBooking = null;
+          _completedBookings = [];
         });
+        // Charger les réservations complétées pour cet artisan
+        await _loadCompletedBookings(selected.id);
       }
     } catch (e) {
       if (mounted) {
@@ -143,6 +149,116 @@ class _ClientReviewPageState extends State<ClientReviewPage> {
     _commentController.dispose();
     _titleController.dispose();
     super.dispose();
+  }
+
+  // NOUVELLE MÉTHODE: Charger les réservations complétées pour un artisan
+  Future<void> _loadCompletedBookings(String artisanId) async {
+    setState(() {
+      _isLoadingBookings = true;
+    });
+
+    try {
+      final allBookings = await BookingService.getMyBookings();
+      
+      // Filtrer les réservations complétées avec cet artisan
+      final completed = allBookings.where(
+        (b) => b.artisanId == artisanId && b.status == BookingStatus.completed,
+      ).toList();
+      
+      setState(() {
+        _completedBookings = completed;
+        _isLoadingBookings = false;
+      });
+      
+      // Si aucune réservation complétée, afficher un message
+      if (completed.isEmpty && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Aucune réservation complétée trouvée avec cet artisan. Vous devez d\'abord compléter une réservation avec cet artisan avant de pouvoir laisser un avis.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoadingBookings = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors du chargement des réservations: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // NOUVELLE MÉTHODE: Sélectionner une réservation complétée
+  Future<void> _selectBooking() async {
+    if (_completedBookings.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Aucune réservation complétée disponible'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final selected = await showDialog<Booking>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sélectionner une réservation'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: _completedBookings.length == 1
+              ? Text(
+                  'Réservation du ${_formatDate(_completedBookings.first.scheduledDate)}',
+                  style: const TextStyle(fontSize: 16),
+                )
+              : ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _completedBookings.length,
+                  itemBuilder: (context, index) {
+                    final booking = _completedBookings[index];
+                    return ListTile(
+                      leading: const Icon(Icons.calendar_today),
+                      title: Text('Réservation du ${_formatDate(booking.scheduledDate)}'),
+                      subtitle: Text(
+                        booking.description.length > 50
+                            ? '${booking.description.substring(0, 50)}...'
+                            : booking.description,
+                      ),
+                      onTap: () => Navigator.pop(context, booking),
+                    );
+                  },
+                ),
+        ),
+        actions: [
+          if (_completedBookings.length == 1)
+            TextButton(
+              onPressed: () => Navigator.pop(context, _completedBookings.first),
+              child: const Text('Utiliser cette réservation'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+        ],
+      ),
+    );
+
+    if (selected != null) {
+      setState(() {
+        _selectedBooking = selected;
+      });
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} à ${date.hour}h${date.minute.toString().padLeft(2, '0')}';
   }
 
   Future<void> _submitReview() async {
@@ -170,6 +286,31 @@ class _ClientReviewPageState extends State<ClientReviewPage> {
 
     if (!_formKey.currentState!.validate()) return;
 
+    // Vérifier qu'une réservation complétée est disponible
+    if (_completedBookings.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Aucune réservation complétée trouvée avec cet artisan. Vous devez d\'abord compléter une réservation avec cet artisan avant de pouvoir laisser un avis.'),
+          backgroundColor: Colors.orange,
+          duration: Duration(seconds: 5),
+        ),
+      );
+      return;
+    }
+
+    // Si aucune réservation n'est sélectionnée, utiliser la première disponible
+    if (_selectedBooking == null) {
+      if (_completedBookings.length == 1) {
+        _selectedBooking = _completedBookings.first;
+      } else {
+        // Demander à l'utilisateur de sélectionner une réservation
+        await _selectBooking();
+        if (_selectedBooking == null) {
+          return; // L'utilisateur a annulé
+        }
+      }
+    }
+
     setState(() {
       _isSubmitting = true;
       _error = null;
@@ -179,8 +320,19 @@ class _ClientReviewPageState extends State<ClientReviewPage> {
       final userInfo = await StorageService.getUserInfo();
       final clientId = userInfo['userId']!;
 
+      // Vérifier que la réservation sélectionnée est bien complétée
+      if (_selectedBooking!.status != BookingStatus.completed) {
+        throw Exception('Vous ne pouvez laisser un avis que pour les réservations complétées. Cette réservation a le statut: ${_selectedBooking!.status.name}');
+      }
+      
+      // Vérifier que la réservation appartient bien à l'artisan sélectionné
+      if (_selectedBooking!.artisanId != _selectedArtisan!.id) {
+        throw Exception('La réservation sélectionnée ne correspond pas à l\'artisan choisi.');
+      }
+      
+      // Créer l'avis - cela sera sauvegardé dans la base de données
       await ReviewService.createReview(
-        bookingId: _selectedBooking?.id ?? '',
+        bookingId: _selectedBooking!.id,
         clientId: clientId,
         artisanId: _selectedArtisan!.id,
         rating: _rating.toInt(),
@@ -193,7 +345,7 @@ class _ClientReviewPageState extends State<ClientReviewPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Avis envoyé pour ${_selectedArtisan!.fullName}'),
+            content: Text('Avis envoyé avec succès pour ${_selectedArtisan!.fullName}'),
             backgroundColor: Colors.green,
           ),
         );
@@ -320,6 +472,56 @@ class _ClientReviewPageState extends State<ClientReviewPage> {
                 ),
               ),
               const SizedBox(height: 24),
+              // Afficher les réservations complétées disponibles
+              if (_isLoadingBookings)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_completedBookings.isEmpty)
+                Card(
+                  color: Colors.orange.shade50,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Colors.orange.shade700),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Aucune réservation complétée trouvée avec cet artisan. Vous devez d\'abord compléter une réservation avec cet artisan avant de pouvoir laisser un avis.',
+                            style: TextStyle(color: Colors.orange.shade900),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else ...[
+                // Sélection de la réservation
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.calendar_today),
+                    title: Text(
+                      _selectedBooking == null
+                          ? 'Sélectionner une réservation complétée'
+                          : 'Réservation du ${_formatDate(_selectedBooking!.scheduledDate)}',
+                    ),
+                    subtitle: _selectedBooking == null
+                        ? Text('${_completedBookings.length} réservation(s) complétée(s) disponible(s)')
+                        : Text(
+                            _selectedBooking!.description.length > 50
+                                ? '${_selectedBooking!.description.substring(0, 50)}...'
+                                : _selectedBooking!.description,
+                          ),
+                    trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                    onTap: _selectBooking,
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
             ],
             // Titre (optionnel)
             TextFormField(

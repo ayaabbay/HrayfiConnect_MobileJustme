@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
+import 'dart:io' if (dart.library.html) 'dart:html' as html;
+import 'dart:typed_data';
 import '../../services/user_service.dart';
 import '../../services/storage_service.dart';
 import '../../services/api_service.dart';
+import '../../services/upload_service.dart';
 import '../../models/user.dart';
 
 class ClientEditProfilePage extends StatefulWidget {
@@ -23,11 +28,101 @@ class _ClientEditProfilePageState extends State<ClientEditProfilePage> {
   bool _isLoading = true;
   bool _isSaving = false;
   String? _error;
+  String? _profilePictureUrl;
+  String? _userId;
+  XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+  }
+
+  Future<void> _pickProfilePicture() async {
+    final ImagePicker picker = ImagePicker();
+    
+    final XFile? image = await showModalBottomSheet<XFile>(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Galerie'),
+                onTap: () async {
+                  final XFile? pickedImage = await picker.pickImage(source: ImageSource.gallery);
+                  Navigator.pop(context, pickedImage);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Caméra'),
+                onTap: () async {
+                  final XFile? pickedImage = await picker.pickImage(source: ImageSource.camera);
+                  Navigator.pop(context, pickedImage);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.cancel),
+                title: const Text('Annuler'),
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (image != null) {
+      final bytes = await image.readAsBytes();
+      setState(() {
+        _isSaving = true;
+        _selectedImageBytes = bytes;
+      });
+
+      try {
+        // Passer directement XFile au lieu de File pour compatibilité web
+        final result = await UploadService.uploadProfilePicture(image);
+        setState(() {
+          _profilePictureUrl = result['url'] as String?;
+          _isSaving = false;
+        });
+        
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Photo de profil mise à jour avec succès'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        // Recharger le profil pour mettre à jour l'avatar
+        _loadProfile();
+      }
+      } catch (e) {
+        setState(() {
+          _isSaving = false;
+          _selectedImage = null;
+        });
+        
+        if (mounted) {
+          String errorMessage = 'Erreur lors de l\'upload';
+          if (e is ApiException) {
+            errorMessage = e.message;
+          } else {
+            errorMessage = e.toString();
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -41,6 +136,7 @@ class _ClientEditProfilePageState extends State<ClientEditProfilePage> {
       final profileData = profile['profile_data'] as Map<String, dynamic>? ?? {};
       
       setState(() {
+        _userId = profile['id'] as String?;
         _firstNameController.text = profileData['first_name'] ?? '';
         _lastNameController.text = profileData['last_name'] ?? '';
         _emailController.text = profile['email'] ?? '';
@@ -76,11 +172,12 @@ class _ClientEditProfilePageState extends State<ClientEditProfilePage> {
     });
 
     try {
-      final userInfo = await StorageService.getUserInfo();
-      final userId = userInfo['userId']!;
+      if (_userId == null) {
+        throw Exception('Impossible de déterminer l\'identifiant utilisateur');
+      }
 
       await UserService.updateClient(
-        userId,
+        _userId!,
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         phone: _phoneController.text.trim(),
@@ -179,7 +276,14 @@ class _ClientEditProfilePageState extends State<ClientEditProfilePage> {
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.grey.shade300,
-                    child: const Icon(Icons.person, size: 50),
+                    backgroundImage: _profilePictureUrl != null && _profilePictureUrl!.isNotEmpty
+                        ? NetworkImage(_profilePictureUrl!)
+                        : (_selectedImageBytes != null
+                            ? MemoryImage(_selectedImageBytes!)
+                            : null) as ImageProvider?,
+                    child: _profilePictureUrl == null && _selectedImage == null
+                        ? const Icon(Icons.person, size: 50)
+                        : null,
                   ),
                   Positioned(
                     bottom: 0,
@@ -190,7 +294,7 @@ class _ClientEditProfilePageState extends State<ClientEditProfilePage> {
                       child: IconButton(
                         padding: EdgeInsets.zero,
                         icon: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
-                        onPressed: () {},
+                        onPressed: _pickProfilePicture,
                       ),
                     ),
                   ),
@@ -311,4 +415,3 @@ class _ClientEditProfilePageState extends State<ClientEditProfilePage> {
     );
   }
 }
-

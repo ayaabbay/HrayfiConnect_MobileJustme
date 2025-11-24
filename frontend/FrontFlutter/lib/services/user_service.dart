@@ -14,7 +14,6 @@ class UserService {
 
     throw Exception('Erreur lors de la récupération du profil');
   }
-
   static Future<List<Client>> getClients({
     int skip = 0,
     int limit = 100,

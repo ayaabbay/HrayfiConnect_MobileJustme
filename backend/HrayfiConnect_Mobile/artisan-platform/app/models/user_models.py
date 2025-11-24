@@ -48,11 +48,14 @@ class UserManager:
         result = await self.collection.delete_one({"_id": ObjectId(user_id)})
         return result.deleted_count > 0
     
-    async def list_users(self, user_type: str = None, skip: int = 0, limit: int = 100):
+    async def list_users(self, user_type: str = None, skip: int = 0, limit: int = 100, active_only: bool = True):
         query = {}
         if user_type:
             query["user_type"] = user_type
-            
+        # Filtrer les utilisateurs inactifs si active_only est True
+        if active_only:
+            query["is_active"] = {"$ne": False}  # Inclure les utilisateurs actifs ou sans champ is_active
+        
         cursor = self.collection.find(query).skip(skip).limit(limit)
         users = []
         async for user in cursor:
@@ -62,7 +65,8 @@ class UserManager:
     async def find_artisans_by_trade(self, trade: str, skip: int = 0, limit: int = 100):
         query = {
             "user_type": "artisan",
-            "trade": {"$regex": trade, "$options": "i"}
+            "trade": {"$regex": trade, "$options": "i"},
+            "is_active": {"$ne": False}  # Filtrer les artisans inactifs
         }
         cursor = self.collection.find(query).skip(skip).limit(limit)
         artisans = []
@@ -74,7 +78,8 @@ class UserManager:
         """Trouve les artisans par localisation"""
         query = {
             "user_type": "artisan",
-            "address": {"$regex": location, "$options": "i"}
+            "address": {"$regex": location, "$options": "i"},
+            "is_active": {"$ne": False}  # Filtrer les artisans inactifs
         }
         cursor = self.collection.find(query).skip(skip).limit(limit)
         artisans = []

@@ -95,6 +95,9 @@ async def list_artisans(
     else:
         artisans = await user_manager.list_users("artisan", skip, limit)
     
+    # Filtrer les artisans inactifs (ne montrer que les artisans actifs)
+    artisans = [a for a in artisans if a.get("is_active", True) is not False]
+    
     # Filtrer par statut de vérification si spécifié
     if verified is not None:
         artisans = [a for a in artisans if a.get("is_verified") == verified]
@@ -103,7 +106,17 @@ async def list_artisans(
     for artisan in artisans:
         artisan["id"] = str(artisan["_id"])
     
-    return [ArtisanResponse(**artisan) for artisan in artisans]
+    try:
+        return [ArtisanResponse(**artisan) for artisan in artisans]
+    except Exception as e:
+        print(f"Erreur lors de la sérialisation des artisans: {e}")
+        print(f"Nombre d'artisans: {len(artisans)}")
+        if artisans:
+            print(f"Premier artisan: {artisans[0]}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de la récupération des artisans: {str(e)}"
+        )
 
 @router.get("/artisans/{artisan_id}", response_model=ArtisanResponse)
 async def get_artisan(
@@ -162,9 +175,81 @@ async def verify_artisan(
     
     return {"message": "Artisan verified successfully"}
 
+@router.put("/artisans/{artisan_id}/disable")
+async def disable_artisan(
+    artisan_id: str,
+    current_user: dict = Depends(get_current_user),
+    user_manager: UserManager = Depends(get_user_manager)
+):
+    """
+    Désactive un artisan (Admin seulement)
+    """
+    if current_user.get("user_type") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permissions required"
+        )
+    
+    artisan = await user_manager.find_user_by_id(artisan_id)
+    if not artisan or artisan.get("user_type") != "artisan":
+        raise HTTPException(status_code=404, detail="Artisan not found")
+    
+    await user_manager.update_user(artisan_id, {"is_active": False})
+    
+    return {"message": "Artisan désactivé avec succès"}
+
+@router.put("/artisans/{artisan_id}/enable")
+async def enable_artisan(
+    artisan_id: str,
+    current_user: dict = Depends(get_current_user),
+    user_manager: UserManager = Depends(get_user_manager)
+):
+    """
+    Réactive un artisan (Admin seulement)
+    """
+    if current_user.get("user_type") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permissions required"
+        )
+    
+    artisan = await user_manager.find_user_by_id(artisan_id)
+    if not artisan or artisan.get("user_type") != "artisan":
+        raise HTTPException(status_code=404, detail="Artisan not found")
+    
+    await user_manager.update_user(artisan_id, {"is_active": True})
+    
+    return {"message": "Artisan réactivé avec succès"}
+
+@router.delete("/artisans/{artisan_id}")
+async def delete_artisan(
+    artisan_id: str,
+    current_user: dict = Depends(get_current_user),
+    user_manager: UserManager = Depends(get_user_manager)
+):
+    """
+    Supprime un artisan (Admin seulement)
+    """
+    if current_user.get("user_type") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin permissions required"
+        )
+    
+    artisan = await user_manager.find_user_by_id(artisan_id)
+    if not artisan or artisan.get("user_type") != "artisan":
+        raise HTTPException(status_code=404, detail="Artisan not found")
+    
+    success = await user_manager.delete_user(artisan_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Artisan not found")
+    
+    return {"message": "Artisan supprimé avec succès"}
+
 # Route pour récupérer le profil utilisateur
 @router.get("/profile", response_model=UserProfile)
 async def get_user_profile(current_user: dict = Depends(get_current_user)):
+    print("🖼️ DEBUG - Photo de profil:", current_user.get("profile_picture"))
     user_type = current_user["user_type"]
     profile_data = {}
     
@@ -172,7 +257,8 @@ async def get_user_profile(current_user: dict = Depends(get_current_user)):
         profile_data = {
             "first_name": current_user.get("first_name"),
             "last_name": current_user.get("last_name"),
-            "address": current_user.get("address")
+            "address": current_user.get("address"),
+            "profile_picture": current_user.get("profile_picture") 
         }
     elif user_type == "artisan":
         profile_data = {
@@ -183,7 +269,10 @@ async def get_user_profile(current_user: dict = Depends(get_current_user)):
             "description": current_user.get("description"),
             "years_of_experience": current_user.get("years_of_experience"),
             "is_verified": current_user.get("is_verified", False),
-            "certifications": current_user.get("certifications", [])
+            "certifications": current_user.get("certifications", []),
+            "profile_picture": current_user.get("profile_picture"),
+            "portfolio": current_user.get("portfolio", []),
+            "address": current_user.get("address"),
         }
     elif user_type == "admin":
         profile_data = {
@@ -232,13 +321,23 @@ async def search_artisans(
     elif location:
         artisans = await user_manager.find_artisans_by_location(location, skip, limit)
     else:
-        artisans = await user_manager.list_users("artisan", skip, limit)
+        artisans = await user_manager.list_users("artisan", skip, limit, active_only=True)
+    
+    # Filtrer les artisans inactifs (double vérification)
+    artisans = [a for a in artisans if a.get("is_active", True) is not False]
     
     # Convertir ObjectId en string pour la réponse
     for artisan in artisans:
         artisan["id"] = str(artisan["_id"])
     
-    return [ArtisanResponse(**artisan) for artisan in artisans]
+    try:
+        return [ArtisanResponse(**artisan) for artisan in artisans]
+    except Exception as e:
+        print(f"Erreur lors de la sérialisation des artisans (search): {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erreur lors de la recherche des artisans: {str(e)}"
+        )
 
 @router.put("/artisans/{artisan_id}/verify")
 async def verify_artisan(

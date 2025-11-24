@@ -26,20 +26,33 @@ class ApiService {
     Map<String, String>? queryParams,
     bool includeAuth = true,
   }) async {
-    var uri = Uri.parse('$baseUrl$endpoint');
-    if (queryParams != null && queryParams.isNotEmpty) {
-      uri = uri.replace(queryParameters: queryParams);
+    try {
+      var uri = Uri.parse('$baseUrl$endpoint');
+      if (queryParams != null && queryParams.isNotEmpty) {
+        uri = uri.replace(queryParameters: queryParams);
+      }
+      
+      final response = await http.get(
+        uri,
+        headers: await _getHeaders(includeAuth: includeAuth),
+      );
+      
+      // Gestion des erreurs HTTP
+      _handleHttpError(response);
+      
+      return response;
+    } catch (e) {
+      // Gérer les erreurs de connexion (ClientException)
+      if (e.toString().contains('Failed host lookup') || 
+          e.toString().contains('Failed to connect') ||
+          e.toString().contains('Connection refused')) {
+        throw ApiException(
+          statusCode: 0,
+          message: 'Impossible de se connecter au serveur. Vérifiez que le backend est démarré sur $baseUrl',
+        );
+      }
+      rethrow;
     }
-    
-    final response = await http.get(
-      uri,
-      headers: await _getHeaders(includeAuth: includeAuth),
-    );
-    
-    // Gestion des erreurs HTTP
-    _handleHttpError(response);
-    
-    return response;
   }
 
   static Future<http.Response> post(

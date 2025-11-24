@@ -8,31 +8,59 @@ class ArtisanService {
     String? trade,
     bool? verified,
   }) async {
-    final queryParams = <String, String>{
-      'skip': skip.toString(),
-      'limit': limit.toString(),
-    };
-    if (trade != null) {
-      queryParams['trade'] = trade;
-    }
-    if (verified != null) {
-      queryParams['verified'] = verified.toString();
-    }
-
-    final response = await ApiService.get(
-      '/users/artisans/',
-      queryParams: queryParams,
-    );
-
-    if (response.statusCode == 200) {
-      final data = ApiService.parseListResponse(response);
-      if (data != null) {
-        return data.map((json) => Artisan.fromJson(json as Map<String, dynamic>)).toList();
+    try {
+      final queryParams = <String, String>{
+        'skip': skip.toString(),
+        'limit': limit.toString(),
+      };
+      if (trade != null && trade.isNotEmpty) {
+        queryParams['trade'] = trade;
       }
-    }
+      if (verified != null) {
+        queryParams['verified'] = verified.toString();
+      }
 
-    return [];
+      final response = await ApiService.get(
+        '/users/artisans/',
+        queryParams: queryParams,
+      );
+
+      if (response.statusCode == 200) {
+        final data = ApiService.parseListResponse(response);
+        if (data != null && data.isNotEmpty) {
+          try {
+            return data.map((json) {
+              try {
+                return Artisan.fromJson(json as Map<String, dynamic>);
+              } catch (e) {
+                print('Erreur lors du parsing d\'un artisan: $e');
+                print('Données JSON: $json');
+                rethrow;
+              }
+            }).toList();
+          } catch (e) {
+            print('Erreur lors de la conversion des artisans: $e');
+            throw Exception('Erreur lors de la conversion des données des artisans: $e');
+          }
+        }
+      }
+
+      return [];
+    } catch (e) {
+      print('Erreur dans getArtisans: $e');
+      rethrow;
+    }
   }
+  static Future<void> updatePortfolio(String artisanId, List<String> portfolioImages) async {
+  final response = await ApiService.put(
+    '/users/artisans/$artisanId/portfolio',
+    body: {'portfolio': portfolioImages},
+  );
+
+  if (response.statusCode != 200) {
+    throw Exception('Erreur lors de la mise à jour du portfolio');
+  }
+}
 
   static Future<List<Artisan>> searchArtisans({
     String? trade,
@@ -71,6 +99,30 @@ class ArtisanService {
 
     if (response.statusCode != 200) {
       throw Exception('Erreur lors de la vérification');
+    }
+  }
+
+  static Future<void> disableArtisan(String artisanId) async {
+    final response = await ApiService.put('/users/artisans/$artisanId/disable');
+
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors de la désactivation');
+    }
+  }
+
+  static Future<void> enableArtisan(String artisanId) async {
+    final response = await ApiService.put('/users/artisans/$artisanId/enable');
+
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors de la réactivation');
+    }
+  }
+
+  static Future<void> deleteArtisan(String artisanId) async {
+    final response = await ApiService.delete('/users/artisans/$artisanId');
+
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors de la suppression');
     }
   }
 

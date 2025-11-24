@@ -19,7 +19,7 @@ class ReviewService {
       'title': title,
     };
 
-    final response = await ApiService.post('/reviews/', body: body);
+    final response = await ApiService.post('/reviews', body: body);
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = ApiService.parseResponse(response);

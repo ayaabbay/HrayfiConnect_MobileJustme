@@ -45,7 +45,8 @@ class _ClientProfilePageState extends State<ClientProfilePage> {
           firstName: profileData['first_name'] ?? '',
           lastName: profileData['last_name'] ?? '',
           address: profileData['address'],
-          profilePicture: profile['profile_picture'] as String?,
+          profilePicture: profileData['profile_picture'] as String?,
+          profileData: profileData,
         );
         _isLoading = false;
       });
@@ -163,10 +164,12 @@ class _ClientProfilePageState extends State<ClientProfilePage> {
                             color: Colors.indigo,
                             title: 'Modifier profil',
                             subtitle: 'Nom, adresse, préférences',
-                            onTap: () {
-                              Navigator.of(context).push(
+                            onTap: () async {
+                              await Navigator.of(context).push(
                                 MaterialPageRoute(builder: (_) => const ClientEditProfilePage()),
                               );
+                              // Recharger le profil après modification
+                              _loadProfile();
                             },
                           ),
                           _ProfileActionCard(

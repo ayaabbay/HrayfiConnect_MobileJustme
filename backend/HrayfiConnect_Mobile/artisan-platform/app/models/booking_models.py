@@ -26,6 +26,16 @@ class BookingManager:
     async def find_booking_by_id(self, booking_id: str):
         """Trouve une réservation par son ID"""
         try:
+            # Valider que booking_id n'est pas vide
+            if not booking_id or not booking_id.strip():
+                print(f"❌ Erreur recherche réservation: booking_id est vide")
+                return None
+            
+            # Valider le format ObjectId
+            if not ObjectId.is_valid(booking_id):
+                print(f"❌ Erreur recherche réservation {booking_id}: format ObjectId invalide")
+                return None
+                
             return await self.collection.find_one({"_id": ObjectId(booking_id)})
         except Exception as e:
             print(f"❌ Erreur recherche réservation {booking_id}: {e}")
@@ -111,12 +121,19 @@ class BookingManager:
                 # Préparer les données client
                 client_info = None
                 if client:
+                    # Récupérer l'adresse depuis profile_data si disponible
+                    profile_data = client.get("profile_data", {})
+                    client_address = profile_data.get("address") if isinstance(profile_data, dict) else None
+                    if not client_address:
+                        client_address = client.get("address")
+                    
                     client_info = {
                         "id": str(client["_id"]),
                         "first_name": client.get("first_name", ""),
                         "last_name": client.get("last_name", ""),
                         "email": client.get("email", ""),
                         "phone": client.get("phone", ""),
+                        "address": client_address,
                         "profile_picture": client.get("profile_picture")
                     }
                 

@@ -25,7 +25,9 @@ class _ClientShellState extends State<ClientShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Espace Client')),
+      appBar: _currentIndex == 0 
+          ? null // Pas d'AppBar pour la page d'accueil (elle a sa propre barre de recherche)
+          : AppBar(title: const Text('Espace Client')),
       body: _pages[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

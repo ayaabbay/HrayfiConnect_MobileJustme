@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, validator, ConfigDict
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 # Schémas de base
@@ -29,6 +29,14 @@ class UserInDB(UserBase):
     id: str
     created_at: datetime
     
+    model_config = ConfigDict(from_attributes=True)
+
+# Schéma pour les images de portfolio
+class PortfolioImage(BaseModel):
+    url: str
+    public_id: str
+    uploaded_at: datetime
+
     model_config = ConfigDict(from_attributes=True)
 
 # Schémas Client
@@ -71,16 +79,18 @@ class ArtisanBase(BaseModel):
     address: Optional[str] = None  # NOUVEAU: Adresse de l'artisan
     identity_document: Optional[IdentityDocument] = None  # MODIFIÉ: Structure pour documents
     certifications: List[str] = []
-    portfolio: List[str] = []
+    portfolio: List[PortfolioImage] = []  # ✅ CORRIGÉ: List[PortfolioImage] au lieu de List[str]
 
 class ArtisanCreate(ArtisanBase, UserCreate):
-    pass
+    # Pour la création, on peut utiliser List[str] si nécessaire
+    portfolio: List[str] = []
 
 class ArtisanUpdate(ArtisanBase, UserUpdate):
     availability: Optional[Availability] = None
 
 class ArtisanResponse(ArtisanBase, UserInDB):
     is_verified: bool = False
+    is_active: bool = True
     availability: Optional[Availability] = None
     average_rating: Optional[float] = None
     total_reviews: Optional[int] = None

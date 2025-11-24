@@ -4,6 +4,7 @@ class User {
   final String phone;
   final String userType;
   final String? profilePicture;
+  final Map<String, dynamic> profileData;
 
   User({
     required this.id,
@@ -11,15 +12,19 @@ class User {
     required this.phone,
     required this.userType,
     this.profilePicture,
+    required this.profileData,
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+    final profileData = json['profile_data'] as Map<String, dynamic>? ?? {};
+    
     return User(
       id: json['id'] as String,
       email: json['email'] as String,
       phone: json['phone'] as String,
       userType: json['user_type'] as String,
-      profilePicture: json['profile_picture'] as String?,
+      profilePicture: profileData['profile_picture'],
+      profileData: profileData,
     );
   }
 }
@@ -37,19 +42,23 @@ class Client extends User {
     required this.lastName,
     this.address,
     super.profilePicture,
+    required super.profileData, // ✅ AJOUTÉ
   }) : super(userType: 'client');
 
   String get fullName => '$firstName $lastName';
 
   factory Client.fromJson(Map<String, dynamic> json) {
+    final profileData = json['profile_data'] as Map<String, dynamic>? ?? {};
+    
     return Client(
       id: json['id'] as String,
       email: json['email'] as String,
       phone: json['phone'] as String,
-      firstName: json['first_name'] as String,
-      lastName: json['last_name'] as String,
-      address: json['address'] as String?,
-      profilePicture: json['profile_picture'] as String?,
+      firstName: profileData['first_name'] as String? ?? '', // ✅ CORRIGÉ
+      lastName: profileData['last_name'] as String? ?? '',   // ✅ CORRIGÉ
+      address: profileData['address'] as String?,
+      profilePicture: profileData['profile_picture'],        // ✅ UNE SEULE FOIS
+      profileData: profileData,                              // ✅ AJOUTÉ
     );
   }
 
@@ -102,10 +111,11 @@ class Artisan extends User {
   final int? yearsOfExperience;
   final bool isVerified;
   final List<String> certifications;
-  final List<PortfolioItem> portfolio; // Changé de List<String> à List<PortfolioItem>
+  final List<PortfolioItem> portfolio;
   final String? address;
   final double? averageRating;
   final int? totalReviews;
+  final bool? isActive;
 
   Artisan({
     required super.id,
@@ -123,27 +133,33 @@ class Artisan extends User {
     this.address,
     this.averageRating,
     this.totalReviews,
+    this.isActive = true,
     super.profilePicture,
+    required super.profileData,
   }) : super(userType: 'artisan');
 
   String get fullName => '$firstName $lastName';
 
   factory Artisan.fromJson(Map<String, dynamic> json) {
-    // Gérer le portfolio qui peut être List<String> (ancien format) ou List<Map> (nouveau format)
-    List<PortfolioItem> portfolioList = [];
-    final portfolioData = json['portfolio'];
-    if (portfolioData != null) {
-      if (portfolioData is List) {
-        portfolioList = portfolioData.map((item) {
+    final profileData = Map<String, dynamic>.from(json['profile_data'] as Map<String, dynamic>? ?? {});
+
+    dynamic resolveValue(String key) {
+      if (profileData.containsKey(key) && profileData[key] != null) {
+        return profileData[key];
+      }
+      return json[key];
+    }
+
+    List<PortfolioItem> _parsePortfolio(dynamic source) {
+      if (source is List) {
+        return source.map((item) {
           if (item is String) {
-            // Ancien format: juste l'URL
             return PortfolioItem(
               url: item,
               publicId: '',
               uploadedAt: DateTime.now().toIso8601String(),
             );
           } else if (item is Map<String, dynamic>) {
-            // Nouveau format: objet avec url, public_id, uploaded_at
             return PortfolioItem.fromJson(item);
           }
           return PortfolioItem(
@@ -153,30 +169,45 @@ class Artisan extends User {
           );
         }).toList();
       }
+      return [];
+    }
+
+    final portfolioSource = resolveValue('portfolio');
+
+    String _resolveId() {
+      final String? id = json['id'] as String?;
+      if (id != null) return id;
+      final dynamic rawObjectId = json['_id'];
+      if (rawObjectId is String) return rawObjectId;
+      if (rawObjectId is Map<String, dynamic>) {
+        final oid = rawObjectId[r'$oid'];
+        if (oid is String) return oid;
+      }
+      return '';
     }
 
     return Artisan(
-      id: json['id'] as String,
-      email: json['email'] as String,
-      phone: json['phone'] as String,
-      firstName: json['first_name'] as String,
-      lastName: json['last_name'] as String,
-      companyName: json['company_name'] as String?,
-      trade: json['trade'] as String,
-      description: json['description'] as String?,
-      yearsOfExperience: json['years_of_experience'] as int?,
-      isVerified: json['is_verified'] as bool? ?? false,
-      certifications: (json['certifications'] as List<dynamic>?)
+      id: _resolveId(),
+      email: (json['email'] ?? '') as String,
+      phone: (json['phone'] ?? '') as String,
+      firstName: (resolveValue('first_name') as String?) ?? '',
+      lastName: (resolveValue('last_name') as String?) ?? '',
+      companyName: resolveValue('company_name') as String?,
+      trade: (resolveValue('trade') as String?) ?? '',
+      description: resolveValue('description') as String?,
+      yearsOfExperience: (resolveValue('years_of_experience') as num?)?.toInt(),
+      isVerified: (resolveValue('is_verified') as bool?) ?? false,
+      isActive: (resolveValue('is_active') as bool?) ?? (json['is_active'] as bool? ?? true),
+      certifications: (resolveValue('certifications') as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      portfolio: portfolioList,
-      address: json['address'] as String?,
-      averageRating: json['average_rating'] != null 
-          ? (json['average_rating'] as num).toDouble()
-          : null,
-      totalReviews: json['total_reviews'] as int?,
-      profilePicture: json['profile_picture'] as String?,
+      portfolio: _parsePortfolio(portfolioSource),
+      address: resolveValue('address') as String?,
+      averageRating: (resolveValue('average_rating') as num?)?.toDouble(),
+      totalReviews: (resolveValue('total_reviews') as num?)?.toInt(),
+      profilePicture: (resolveValue('profile_picture') as String?) ?? json['profile_picture'] as String?,
+      profileData: profileData,
     );
   }
 
@@ -193,7 +224,6 @@ class Artisan extends User {
     };
   }
   
-  // Helper pour obtenir les URLs du portfolio (pour compatibilité)
   List<String> get portfolioUrls => portfolio.map((item) => item.url).toList();
 }
 
@@ -212,12 +242,14 @@ class Admin extends User {
     required this.role,
     this.permissions = const [],
     super.profilePicture,
+    required super.profileData, // ✅ AJOUTÉ
   }) : super(userType: 'admin');
 
   String get fullName => '$firstName $lastName';
 
   factory Admin.fromJson(Map<String, dynamic> json) {
     final profileData = json['profile_data'] as Map<String, dynamic>? ?? {};
+    
     return Admin(
       id: json['id'] as String,
       email: json['email'] as String,
@@ -229,8 +261,8 @@ class Admin extends User {
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      profilePicture: json['profile_picture'] as String?,
+      profilePicture: profileData['profile_picture'],
+      profileData: profileData, // ✅ AJOUTÉ
     );
   }
 }
-

@@ -21,9 +21,8 @@ class FrontFlutterApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      initialRoute: RoleSelectorPage.routeName,
+      initialRoute: '/login',
       routes: {
-        RoleSelectorPage.routeName: (context) => const RoleSelectorPage(),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         ClientShell.routeName: (context) => const ClientShell(),

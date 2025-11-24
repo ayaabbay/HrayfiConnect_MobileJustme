@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../models/artisan_model.dart';
+import '../../../models/booking.dart';
 import 'urgent_badge.dart';
+
 class ClientCard extends StatelessWidget {
   final ArtisanClient client;
   final VoidCallback onTap;
   final VoidCallback onAccept;
   final VoidCallback onDecline;
+  final BookingStatus? currentStatus;
+  final ValueChanged<BookingStatus>? onStatusChanged;
+  final List<BookingStatus>? statusOptions;
+  final bool isStatusUpdating;
 
   const ClientCard({
     Key? key,
@@ -13,6 +20,10 @@ class ClientCard extends StatelessWidget {
     required this.onTap,
     required this.onAccept,
     required this.onDecline,
+    this.currentStatus,
+    this.onStatusChanged,
+    this.statusOptions,
+    this.isStatusUpdating = false,
   }) : super(key: key);
 
   @override
@@ -113,10 +124,97 @@ class ClientCard extends StatelessWidget {
                       ),
                   ],
                 ),
+
+              if (!client.isUrgent && currentStatus != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Statut de la demande',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Chip(
+                      label: Text(_statusLabel(currentStatus!)),
+                      backgroundColor: _statusColor(currentStatus!).withOpacity(0.15),
+                      labelStyle: TextStyle(color: _statusColor(currentStatus!), fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<BookingStatus>(
+                        value: currentStatus,
+                        icon: const Icon(Icons.arrow_drop_down),
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          labelText: 'Mettre à jour',
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        items: (statusOptions ?? BookingStatus.values)
+                            .map(
+                              (status) => DropdownMenuItem(
+                                value: status,
+                                child: Text(_statusLabel(status)),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: isStatusUpdating || onStatusChanged == null
+                            ? null
+                            : (value) {
+                                if (value != null) {
+                                  onStatusChanged!(value);
+                                }
+                              },
+                      ),
+                    ),
+                    if (isStatusUpdating) ...[
+                      const SizedBox(width: 12),
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
+  }
+
+  String _statusLabel(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.pending:
+        return 'En attente';
+      case BookingStatus.confirmed:
+        return 'Confirmée';
+      case BookingStatus.inProgress:
+        return 'En cours';
+      case BookingStatus.completed:
+        return 'Complétée';
+      case BookingStatus.cancelled:
+        return 'Annulée';
+      case BookingStatus.rejected:
+        return 'Refusée';
+    }
+  }
+
+  Color _statusColor(BookingStatus status) {
+    switch (status) {
+      case BookingStatus.pending:
+        return Colors.orange;
+      case BookingStatus.confirmed:
+        return Colors.blue;
+      case BookingStatus.inProgress:
+        return Colors.indigo;
+      case BookingStatus.completed:
+        return Colors.teal;
+      case BookingStatus.cancelled:
+        return Colors.red;
+      case BookingStatus.rejected:
+        return Colors.grey;
+    }
   }
 }

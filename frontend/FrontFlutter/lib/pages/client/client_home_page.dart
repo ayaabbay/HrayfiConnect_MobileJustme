@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/user.dart';
 import '../../services/artisan_service.dart';
+import '../../services/api_service.dart';
 import 'artisan_card.dart';
 import 'artisan_detail_page.dart';
 import 'search_filter_bar.dart';
@@ -40,6 +41,7 @@ class _ClientHomePageState extends State<ClientHomePage> {
 
     try {
       final artisans = await ArtisanService.getArtisans();
+      
       setState(() {
         _allArtisans = artisans;
         _visibleArtisans = List.of(artisans);
@@ -47,7 +49,11 @@ class _ClientHomePageState extends State<ClientHomePage> {
       });
     } catch (e) {
       setState(() {
-        _error = e.toString();
+        if (e is ApiException) {
+          _error = e.message;
+        } else {
+          _error = e.toString().replaceAll('ClientException: ', '');
+        }
         _isLoading = false;
       });
     }
@@ -122,11 +128,10 @@ class _ClientHomePageState extends State<ClientHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Espace Client'),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(88),
-          child: SearchBarWithFilter(
+      body: Column(
+        children: [
+          // Barre de recherche intégrée dans le body pour éviter la redondance
+          SearchBarWithFilter(
             controller: _searchController,
             hasActiveFilters: _hasActiveFilters,
             onClear: () {
@@ -136,9 +141,8 @@ class _ClientHomePageState extends State<ClientHomePage> {
             onSubmit: (_) => _applyFilters(),
             onFilterTap: _openFilters,
           ),
-        ),
-      ),
-      body: _isLoading
+          Expanded(
+            child: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(
@@ -187,23 +191,26 @@ class _ClientHomePageState extends State<ClientHomePage> {
                       ),
                     )
                   : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: _visibleArtisans.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
-              itemBuilder: (context, index) {
-                final artisan = _visibleArtisans[index];
-                return ArtisanCard(
-                  artisan: artisan,
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ArtisanDetailPage(artisan: artisan),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _visibleArtisans.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 16),
+                      itemBuilder: (context, index) {
+                        final artisan = _visibleArtisans[index];
+                        return ArtisanCard(
+                          artisan: artisan,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => ArtisanDetailPage(artisan: artisan),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+          ),
+        ],
+      ),
     );
   }
 }

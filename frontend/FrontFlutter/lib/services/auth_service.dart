@@ -1,6 +1,4 @@
 import '../config/api_config.dart';
-import '../models/auth.dart'; // IMPORT AJOUTÉ
-import '../models/user.dart';
 import 'storage_service.dart';
 import 'api_service.dart';
 import 'package:http/http.dart' as http;
@@ -51,7 +49,7 @@ class AuthService {
     } catch (e) {
       // Ignorer les erreurs de déconnexion
     } finally {
-      await StorageService.clearAll(); // CORRIGÉ : clear() → clearAll()
+      await StorageService.clearAll();
     }
   }
 
@@ -115,28 +113,99 @@ class AuthService {
     throw Exception('Erreur lors de la réinitialisation du mot de passe');
   }
 
-  // Ajout des méthodes d'inscription manquantes
-  static Future<void> registerClient(RegisterClientRequest request) async {
-    final response = await ApiService.post(
-      '/auth/register/client',
-      body: request.toJson(),
-      includeAuth: false,
-    );
+  // NOUVELLES MÉTHODES D'INSCRIPTION CORRIGÉES
+  static Future<Map<String, dynamic>> registerClient({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String phone,
+    String? address,
+  }) async {
+    try {
+      final body = {
+        'email': email,
+        'password': password,
+        'first_name': firstName,
+        'last_name': lastName,
+        'phone': phone,
+      };
+      
+      if (address != null && address.isNotEmpty) {
+        body['address'] = address;
+      }
 
-    if (response.statusCode != 201) {
-      throw Exception('Erreur lors de l\'inscription client');
+      // DEBUG
+      print('🎯 REGISTER CLIENT - Données envoyées: $body');
+
+      final response = await ApiService.post(
+        '/auth/register/client',
+        body: body,
+        includeAuth: false,
+      );
+
+      // CORRECTION: L'API retourne 200, pas 201
+      if (response.statusCode == 200) {
+        final data = ApiService.parseResponse(response);
+        print('✅ INSCRIPTION CLIENT RÉUSSIE: $data');
+        return data ?? {};
+      } else {
+        final errorData = ApiService.parseResponse(response);
+        print('❌ ERREUR INSCRIPTION CLIENT: $errorData');
+        throw Exception(errorData?['detail'] ?? 'Erreur lors de l\'inscription client');
+      }
+    } catch (e) {
+      print('❌ ERREUR CATCH INSCRIPTION CLIENT: $e');
+      rethrow;
     }
   }
 
-  static Future<void> registerArtisan(RegisterArtisanRequest request) async {
-    final response = await ApiService.post(
-      '/auth/register/artisan',
-      body: request.toJson(),
-      includeAuth: false,
-    );
+  static Future<Map<String, dynamic>> registerArtisan({
+    required String email,
+    required String password,
+    required String firstName,
+    required String lastName,
+    required String phone,
+    required String companyName,
+    required String trade,
+    required String description,
+    int yearsOfExperience = 0,
+    List<String> certifications = const [],
+  }) async {
+    try {
+      final body = {
+        'email': email,
+        'password': password,
+        'first_name': firstName,
+        'last_name': lastName,
+        'phone': phone,
+        'company_name': companyName,
+        'trade': trade,
+        'description': description,
+        'years_of_experience': yearsOfExperience,
+        'certifications': certifications,
+      };
 
-    if (response.statusCode != 201) {
-      throw Exception('Erreur lors de l\'inscription artisan');
+      print('🎯 REGISTER ARTISAN - Données envoyées: $body');
+
+      final response = await ApiService.post(
+        '/auth/register/artisan',
+        body: body,
+        includeAuth: false,
+      );
+
+      if (response.statusCode == 200) {
+        final data = ApiService.parseResponse(response);
+        print('✅ INSCRIPTION ARTISAN RÉUSSIE: $data');
+        return data ?? {};
+      } else {
+        final errorData = ApiService.parseResponse(response);
+        print('❌ ERREUR INSCRIPTION ARTISAN: $errorData');
+        throw Exception(errorData?['detail'] ?? 'Erreur lors de l\'inscription artisan');
+      }
+    } catch (e) {
+      print('❌ ERREUR INSCRIPTION ARTISAN: $e');
+      rethrow;
     }
   }
 }

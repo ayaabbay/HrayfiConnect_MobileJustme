@@ -76,10 +76,16 @@ async def delete_profile_picture(
     deleted_from_cloudinary = False
     
     if public_id:
-        delete_result = await cloudinary_service.delete_image(public_id)
-        deleted_from_cloudinary = delete_result.get("result") == "ok"
+        try:
+            delete_result = await cloudinary_service.delete_image(public_id)
+            deleted_from_cloudinary = delete_result.get("result") == "ok"
+        except Exception as e:
+            # Log l'erreur mais continue avec la suppression en base de données
+            print(f"Erreur lors de la suppression Cloudinary: {str(e)}")
+    else:
+        print(f"Impossible d'extraire le public_id de l'URL: {current_profile_picture}")
     
-    # Mettre à jour l'utilisateur
+    # Mettre à jour l'utilisateur (supprimer la photo en base de données même si Cloudinary échoue)
     await user_manager.update_user(
         str(current_user["_id"]), 
         {"profile_picture": None}
@@ -87,8 +93,9 @@ async def delete_profile_picture(
     
     return {
         "message": "Photo de profil supprimée avec succès",
-        "deleted_from_cloudinary": deleted_from_cloudinary
-    }
+        "deleted_from_cloudinary": deleted_from_cloudinary,
+        "public_id": public_id
+    } 
 
 # NOUVEAU: Upload des documents d'identité pour les artisans
 @router.post("/artisans/identity-documents/{document_type}", response_model=IdentityDocumentUploadResponse)

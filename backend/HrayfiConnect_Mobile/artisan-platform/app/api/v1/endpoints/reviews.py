@@ -52,6 +52,13 @@ async def create_review(
             detail="Vous ne pouvez créer des avis que pour vous-même"
         )
     
+    # Valider que booking_id n'est pas vide
+    if not review_data.booking_id or not review_data.booking_id.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="L'ID de réservation est requis"
+        )
+    
     # Vérifier que la réservation existe et est complétée
     booking = await booking_manager.find_booking_by_id(review_data.booking_id)
     if not booking:

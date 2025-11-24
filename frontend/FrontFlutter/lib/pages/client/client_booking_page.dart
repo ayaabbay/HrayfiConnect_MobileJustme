@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/booking.dart';
 import '../../services/booking_service.dart';
+import '../chat/chat_detail_page.dart';
 
 class ClientBookingPage extends StatefulWidget {
   const ClientBookingPage({super.key});
@@ -121,7 +122,17 @@ class _ClientBookingPageState extends State<ClientBookingPage> {
                                       if (isUrgent) const _UrgentChip(),
                                       const SizedBox(width: 8),
                                       IconButton(
-                                        onPressed: () {},
+                                        onPressed: () {
+                                          Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                              builder: (_) => ChatDetailPage(
+                                                bookingId: booking.id,
+                                                otherUserName: booking.artisanName ?? 'Artisan',
+                                                otherUserAvatar: booking.artisan?['profile_picture'] as String?,
+                                              ),
+                                            ),
+                                          );
+                                        },
                                         icon: const Icon(Icons.chat_bubble_outline),
                                         tooltip: 'Ouvrir le chat',
                                       ),

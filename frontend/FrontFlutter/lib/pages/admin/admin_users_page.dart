@@ -217,29 +217,155 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             subtitle: Text('${artisan.trade} • ${artisan.email}'),
             trailing: PopupMenuButton<String>(
               onSelected: (value) async {
-                if (value == 'verify' && !artisan.isVerified) {
-                  try {
+                try {
+                  if (value == 'verify' && !artisan.isVerified) {
                     await ArtisanService.verifyArtisan(artisan.id);
-                    _loadUsers();
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Artisan vérifié avec succès')),
+                        const SnackBar(
+                          content: Text('Artisan vérifié avec succès'),
+                          backgroundColor: Colors.green,
+                        ),
                       );
                     }
-                  } catch (e) {
+                  } else if (value == 'disable') {
+                    // Demander confirmation avant de désactiver
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Désactiver l\'artisan'),
+                        content: Text('Êtes-vous sûr de vouloir désactiver ${artisan.fullName} ?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Annuler'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: FilledButton.styleFrom(backgroundColor: Colors.orange),
+                            child: const Text('Désactiver'),
+                          ),
+                        ],
+                      ),
+                    );
+                    
+                    if (confirm == true) {
+                      await ArtisanService.disableArtisan(artisan.id);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Artisan désactivé avec succès'),
+                            backgroundColor: Colors.orange,
+                          ),
+                        );
+                      }
+                    }
+                  } else if (value == 'enable') {
+                    await ArtisanService.enableArtisan(artisan.id);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Erreur: ${e.toString()}')),
+                        const SnackBar(
+                          content: Text('Artisan réactivé avec succès'),
+                          backgroundColor: Colors.green,
+                        ),
                       );
                     }
+                  } else if (value == 'delete') {
+                    // Demander confirmation avant de supprimer
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: const Text('Supprimer l\'artisan'),
+                        content: Text(
+                          'Êtes-vous sûr de vouloir supprimer définitivement ${artisan.fullName} ?\n\nCette action est irréversible.',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Annuler'),
+                          ),
+                          FilledButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                            child: const Text('Supprimer'),
+                          ),
+                        ],
+                      ),
+                    );
+                    
+                    if (confirm == true) {
+                      await ArtisanService.deleteArtisan(artisan.id);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Artisan supprimé avec succès'),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  }
+                  
+                  // Recharger la liste après toute action
+                  _loadUsers();
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Erreur: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
                   }
                 }
               },
               itemBuilder: (context) => [
                 if (!artisan.isVerified)
-                  const PopupMenuItem(value: 'verify', child: Text('Vérifier')),
-                const PopupMenuItem(value: 'view', child: Text('Voir')),
-                const PopupMenuItem(value: 'disable', child: Text('Désactiver')),
+                  const PopupMenuItem(
+                    value: 'verify',
+                    child: Row(
+                      children: [
+                        Icon(Icons.verified, size: 18),
+                        SizedBox(width: 8),
+                        Text('Vérifier'),
+                      ],
+                    ),
+                  ),
+                const PopupMenuItem(
+                  value: 'view',
+                  child: Row(
+                    children: [
+                      Icon(Icons.visibility, size: 18),
+                      SizedBox(width: 8),
+                      Text('Voir'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: artisan.isActive ?? true ? 'disable' : 'enable',
+                  child: Row(
+                    children: [
+                      Icon(
+                        artisan.isActive ?? true ? Icons.block : Icons.check_circle,
+                        size: 18,
+                        color: artisan.isActive ?? true ? Colors.orange : Colors.green,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(artisan.isActive ?? true ? 'Désactiver' : 'Réactiver'),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 18, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Supprimer', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),

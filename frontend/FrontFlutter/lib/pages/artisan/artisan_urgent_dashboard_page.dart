@@ -8,11 +8,13 @@ import 'widgets/client_card.dart';
 class ArtisanUrgentDashboardPage extends StatefulWidget {
   final Function(String) onAcceptUrgent;
   final Function(String) onDeclineUrgent;
+  final ValueChanged<int>? onUrgentCountChanged;
 
   const ArtisanUrgentDashboardPage({
     Key? key,
     required this.onAcceptUrgent,
     required this.onDeclineUrgent,
+    this.onUrgentCountChanged,
   }) : super(key: key);
 
   @override
@@ -21,13 +23,24 @@ class ArtisanUrgentDashboardPage extends StatefulWidget {
 
 class _ArtisanUrgentDashboardPageState extends State<ArtisanUrgentDashboardPage> {
   List<ArtisanClient> _clients = [];
+  List<Booking> _acceptedBookings = [];
   bool _isLoading = true;
+  bool _isLoadingAccepted = false;
   String? _error;
+  final Set<String> _statusUpdating = {};
+  final List<BookingStatus> _statusChoices = const [
+    BookingStatus.pending,
+    BookingStatus.confirmed,
+    BookingStatus.inProgress,
+    BookingStatus.completed,
+    BookingStatus.cancelled,
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadBookings();
+    _loadAcceptedBookings();
   }
 
   Future<void> _loadBookings() async {
@@ -61,11 +74,81 @@ class _ArtisanUrgentDashboardPageState extends State<ArtisanUrgentDashboardPage>
       setState(() {
         _isLoading = false;
       });
+      final urgentPending = _clients.where((client) => client.isUrgent && client.status == 'pending').length;
+      widget.onUrgentCountChanged?.call(urgentPending);
     } catch (e) {
       setState(() {
         _error = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  // NOUVELLE MÉTHODE: Charger les réservations acceptées
+  Future<void> _loadAcceptedBookings() async {
+    setState(() {
+      _isLoadingAccepted = true;
+    });
+
+    try {
+      // Récupérer les réservations confirmées et en cours
+      final confirmedBookings = await BookingService.getMyBookings(status: 'confirmed');
+      final inProgressBookings = await BookingService.getMyBookings(status: 'in_progress');
+      
+      // Combiner les deux listes
+      final allAccepted = [...confirmedBookings, ...inProgressBookings];
+      
+      setState(() {
+        _acceptedBookings = allAccepted;
+        _isLoadingAccepted = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingAccepted = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors du chargement des réservations acceptées: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // NOUVELLE MÉTHODE: Changer le statut d'une réservation
+  Future<void> _updateBookingStatus(String bookingId, BookingStatus newStatus) async {
+    try {
+      await BookingService.updateStatus(bookingId, newStatus);
+      
+      // Recharger les réservations acceptées
+      await _loadAcceptedBookings();
+      
+      if (mounted) {
+        final statusText = newStatus == BookingStatus.completed ? 'complétée' : 'en cours';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Réservation marquée comme $statusText avec succès'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        String errorMessage = 'Erreur lors de la mise à jour du statut';
+        if (e is ApiException) {
+          errorMessage = e.message;
+        } else {
+          errorMessage = e.toString();
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -94,9 +177,8 @@ class _ArtisanUrgentDashboardPageState extends State<ArtisanUrgentDashboardPage>
     try {
       await BookingService.updateStatus(client.id, BookingStatus.confirmed);
       widget.onAcceptUrgent(client.id);
-      setState(() {
-        _clients.removeWhere((c) => c.id == client.id);
-      });
+      await _loadBookings();
+      await _loadAcceptedBookings();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -127,9 +209,7 @@ class _ArtisanUrgentDashboardPageState extends State<ArtisanUrgentDashboardPage>
     try {
       await BookingService.updateStatus(client.id, BookingStatus.rejected);
       widget.onDeclineUrgent(client.id);
-      setState(() {
-        _clients.removeWhere((c) => c.id == client.id);
-      });
+      await _loadBookings();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -138,6 +218,46 @@ class _ArtisanUrgentDashboardPageState extends State<ArtisanUrgentDashboardPage>
           ),
         );
       }
+  Future<void> _handleStandardStatusChange(String bookingId, BookingStatus newStatus) async {
+    setState(() {
+      _statusUpdating.add(bookingId);
+    });
+    try {
+      await BookingService.updateStatus(bookingId, newStatus);
+      await _loadBookings();
+      await _loadAcceptedBookings();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Statut mis à jour: ${newStatus.name}'),
+            backgroundColor: Colors.blueGrey.shade700,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        String errorMessage = 'Erreur lors de la mise à jour du statut';
+        if (e is ApiException) {
+          errorMessage = e.message;
+        } else {
+          errorMessage = e.toString();
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _statusUpdating.remove(bookingId);
+        });
+      }
+    }
+  }
+
     } catch (e) {
       if (mounted) {
         String errorMessage = 'Erreur lors du refus';
@@ -191,7 +311,10 @@ class _ArtisanUrgentDashboardPageState extends State<ArtisanUrgentDashboardPage>
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: _loadBookings,
+                  onRefresh: () async {
+                    await _loadBookings();
+                    await _loadAcceptedBookings();
+                  },
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
                     child: Column(
@@ -224,7 +347,10 @@ class _ArtisanUrgentDashboardPageState extends State<ArtisanUrgentDashboardPage>
                                   ),
                                   IconButton(
                                     icon: const Icon(Icons.refresh),
-                                    onPressed: _loadBookings,
+                                    onPressed: () async {
+                                      await _loadBookings();
+                                      await _loadAcceptedBookings();
+                                    },
                                   ),
                                 ],
                               ),
@@ -297,12 +423,70 @@ class _ArtisanUrgentDashboardPageState extends State<ArtisanUrgentDashboardPage>
                                   ),
                                 )
                               else
-                                ..._clients.where((client) => !client.isUrgent).map((client) => ClientCard(
-                                  client: client,
-                                  onTap: () => _handleClientTap(client),
-                                  onAccept: () => _handleAccept(client),
-                                  onDecline: () => _handleDecline(client),
-                                )),
+                                ..._clients.where((client) => !client.isUrgent).map((client) {
+                                  final currentStatus = BookingStatus.fromString(client.status);
+                                  return ClientCard(
+                                    client: client,
+                                    onTap: () => _handleClientTap(client),
+                                    onAccept: () => _handleAccept(client),
+                                    onDecline: () => _handleDecline(client),
+                                    currentStatus: currentStatus,
+                                    statusOptions: _statusChoices,
+                                    onStatusChanged: (status) => _handleStandardStatusChange(client.id, status),
+                                    isStatusUpdating: _statusUpdating.contains(client.id),
+                                  );
+                                }),
+                            ],
+                          ),
+                        ),
+                        
+                        // NOUVELLE SECTION: Réservations Acceptées
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SizedBox(height: 24),
+                              Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.green),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Réservations Acceptées',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+                              if (_isLoadingAccepted)
+                                const Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.all(16.0),
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                )
+                              else if (_acceptedBookings.isEmpty)
+                                Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(32.0),
+                                    child: Column(
+                                      children: [
+                                        Icon(Icons.check_circle_outline, size: 64, color: Colors.grey.shade400),
+                                        SizedBox(height: 16),
+                                        Text(
+                                          'Aucune réservation acceptée',
+                                          style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                              else
+                                ..._acceptedBookings.map((booking) => _buildAcceptedBookingCard(booking)),
                             ],
                           ),
                         ),
@@ -311,6 +495,152 @@ class _ArtisanUrgentDashboardPageState extends State<ArtisanUrgentDashboardPage>
                     ),
                   ),
                 ),
+    );
+  }
+
+  // NOUVELLE MÉTHODE: Construire une carte pour une réservation acceptée
+  Widget _buildAcceptedBookingCard(Booking booking) {
+    final clientName = booking.clientName ?? 'Client inconnu';
+    final isCompleted = booking.status == BookingStatus.completed;
+    final isInProgress = booking.status == BookingStatus.inProgress;
+    
+    return Card(
+      margin: EdgeInsets.only(bottom: 12),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Colors.green.shade100,
+                  backgroundImage: booking.client?['profile_picture'] != null
+                      ? NetworkImage(booking.client!['profile_picture'] as String)
+                      : null,
+                  child: booking.client?['profile_picture'] == null
+                      ? Text(
+                          clientName.isNotEmpty ? clientName[0].toUpperCase() : 'C',
+                          style: TextStyle(color: Colors.green.shade700, fontWeight: FontWeight.bold),
+                        )
+                      : null,
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        clientName,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.calendar_today, size: 14, color: Colors.grey.shade600),
+                          SizedBox(width: 4),
+                          Text(
+                            '${booking.scheduledDate.day}/${booking.scheduledDate.month}/${booking.scheduledDate.year}',
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          ),
+                          SizedBox(width: 12),
+                          Icon(Icons.access_time, size: 14, color: Colors.grey.shade600),
+                          SizedBox(width: 4),
+                          Text(
+                            '${booking.scheduledDate.hour}h${booking.scheduledDate.minute.toString().padLeft(2, '0')}',
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Chip(
+                  label: Text(
+                    isCompleted ? 'Complétée' : isInProgress ? 'En cours' : booking.status.name,
+                    style: TextStyle(color: Colors.white, fontSize: 12),
+                  ),
+                  backgroundColor: isCompleted ? Colors.teal : Colors.blue,
+                ),
+              ],
+            ),
+            if (booking.description.isNotEmpty) ...[
+              SizedBox(height: 12),
+              Divider(),
+              SizedBox(height: 8),
+              Text(
+                booking.description,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade700),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            SizedBox(height: 12),
+            Divider(),
+            SizedBox(height: 8),
+            // Boutons pour changer le statut
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                if (!isInProgress)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => _updateBookingStatus(booking.id, BookingStatus.inProgress),
+                      icon: Icon(Icons.play_arrow, size: 18),
+                      label: Text('En cours'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue,
+                        side: BorderSide(color: Colors.blue),
+                      ),
+                    ),
+                  ),
+                if (!isInProgress) SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: isCompleted
+                        ? null
+                        : () => _updateBookingStatus(booking.id, BookingStatus.completed),
+                    icon: Icon(Icons.check_circle, size: 18),
+                    label: Text('Compléter'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (isCompleted) ...[
+              SizedBox(height: 8),
+              Container(
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 16, color: Colors.teal.shade700),
+                    SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Le client peut maintenant noter cette réservation',
+                        style: TextStyle(fontSize: 12, color: Colors.teal.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }

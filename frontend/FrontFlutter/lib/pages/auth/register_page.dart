@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
-import '../../models/auth.dart';
 import 'login_page.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -56,59 +55,83 @@ class _RegisterPageState extends State<RegisterPage> {
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) return;
 
+    // Vérification mot de passe
+    if (_passwordController.text != _confirmPasswordController.text) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Les mots de passe ne correspondent pas'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       if (_selectedRole == 0) {
         // Client
-        final request = RegisterClientRequest(
+        await AuthService.registerClient(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),
-          email: _emailController.text.trim(),
           phone: _phoneController.text.trim(),
-          password: _passwordController.text,
           address: _addressController.text.trim(),
         );
-        await AuthService.registerClient(request);
-        
-        if (mounted) {
-          // Après inscription, rediriger vers login
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const LoginPage()),
-          );
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Inscription réussie! Connectez-vous maintenant.')),
-          );
-        }
       } else {
         // Artisan
-        final request = RegisterArtisanRequest(
+        await AuthService.registerArtisan(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
           firstName: _firstNameController.text.trim(),
           lastName: _lastNameController.text.trim(),
-          email: _emailController.text.trim(),
           phone: _phoneController.text.trim(),
-          password: _passwordController.text,
           companyName: _companyNameController.text.trim(),
           trade: _tradeController.text.trim(),
           description: _descriptionController.text.trim(),
           yearsOfExperience: int.tryParse(_yearsOfExperienceController.text) ?? 0,
           certifications: _certifications,
         );
-        await AuthService.registerArtisan(request);
-        
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const LoginPage()),
-          );
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Inscription réussie! Connectez-vous maintenant.')),
-          );
-        }
       }
-    } catch (e) {
+      
+      // SUCCÈS
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erreur: ${e.toString()}')),
+          const SnackBar(
+            content: Text('Inscription réussie! Connectez-vous maintenant.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Redirection vers login
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const LoginPage()),
+        );
+      }
+    } catch (e) {
+      // GESTION D'ERREUR DÉTAILLÉE
+      String errorMessage = 'Erreur lors de l\'inscription';
+      
+      if (e.toString().contains('Email déjà utilisé')) {
+        errorMessage = 'Cet email est déjà utilisé';
+      } else if (e.toString().contains('400')) {
+        errorMessage = 'Données invalides - vérifiez tous les champs';
+      } else if (e.toString().contains('Failed host lookup') || e.toString().contains('Connection refused')) {
+        errorMessage = 'Impossible de se connecter au serveur. Vérifiez que le backend est démarré.';
+      } else {
+        errorMessage = e.toString().replaceAll('Exception: ', '');
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur: $errorMessage'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } finally {
