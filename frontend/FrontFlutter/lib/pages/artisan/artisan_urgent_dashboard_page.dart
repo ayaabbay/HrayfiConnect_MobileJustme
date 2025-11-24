@@ -218,6 +218,24 @@ class _ArtisanUrgentDashboardPageState extends State<ArtisanUrgentDashboardPage>
           ),
         );
       }
+    } catch (e) {
+      if (mounted) {
+        String errorMessage = 'Erreur lors du refus';
+        if (e is ApiException) {
+          errorMessage = e.message;
+        } else {
+          errorMessage = e.toString();
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _handleStandardStatusChange(String bookingId, BookingStatus newStatus) async {
     setState(() {
       _statusUpdating.add(bookingId);
@@ -254,24 +272,6 @@ class _ArtisanUrgentDashboardPageState extends State<ArtisanUrgentDashboardPage>
         setState(() {
           _statusUpdating.remove(bookingId);
         });
-      }
-    }
-  }
-
-    } catch (e) {
-      if (mounted) {
-        String errorMessage = 'Erreur lors du refus';
-        if (e is ApiException) {
-          errorMessage = e.message;
-        } else {
-          errorMessage = e.toString();
-        }
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     }
   }
