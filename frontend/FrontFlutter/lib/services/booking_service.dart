@@ -68,6 +68,50 @@ class BookingService {
     return [];
   }
 
+  static Future<Booking> getBooking(String bookingId) async {
+    final response = await ApiService.get('/bookings/$bookingId');
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return Booking.fromJson(data);
+      }
+    }
+    throw Exception('Réservation introuvable');
+  }
+
+  static Future<Booking> updateBooking(
+    String bookingId, {
+    DateTime? scheduledDate,
+    String? description,
+    bool? urgency,
+    String? address,
+  }) async {
+    final body = <String, dynamic>{};
+    if (scheduledDate != null) {
+      final utcDate = scheduledDate.isUtc ? scheduledDate : scheduledDate.toUtc();
+      body['scheduled_date'] = utcDate.toIso8601String();
+    }
+    if (description != null) body['description'] = description;
+    if (urgency != null) body['urgency'] = urgency;
+    if (address != null) body['address'] = address;
+
+    final response = await ApiService.put('/bookings/$bookingId', body: body);
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return Booking.fromJson(data);
+      }
+    }
+    throw Exception('Erreur lors de la mise à jour de la réservation');
+  }
+
+  static Future<void> deleteBooking(String bookingId) async {
+    final response = await ApiService.delete('/bookings/$bookingId');
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors de la suppression de la réservation');
+    }
+  }
+
   static Future<void> updateSchedule(String bookingId, DateTime scheduledDate) async {
     // Convertir la date en UTC pour correspondre au backend
     final utcDate = scheduledDate.isUtc ? scheduledDate : scheduledDate.toUtc();

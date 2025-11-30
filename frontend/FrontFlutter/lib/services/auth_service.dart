@@ -53,6 +53,38 @@ class AuthService {
     }
   }
 
+  static Future<Map<String, dynamic>> getCurrentUser() async {
+    final response = await ApiService.get('/auth/me');
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return data;
+      }
+    }
+    throw Exception('Erreur lors de la récupération de l\'utilisateur connecté');
+  }
+
+  static Future<Map<String, dynamic>> refreshToken(String refreshToken) async {
+    final response = await ApiService.post(
+      '/auth/refresh',
+      body: {'refresh_token': refreshToken},
+      includeAuth: false,
+    );
+
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        final token = data['access_token'] as String?;
+        if (token != null) {
+          await StorageService.saveToken(token);
+        }
+        return data;
+      }
+    }
+
+    throw Exception('Impossible de rafraîchir le token');
+  }
+
   /// Demande de réinitialisation de mot de passe - Envoie un code par email
   static Future<Map<String, dynamic>> forgotPassword(String email) async {
     final response = await ApiService.post(
@@ -111,6 +143,34 @@ class AuthService {
     }
 
     throw Exception('Erreur lors de la réinitialisation du mot de passe');
+  }
+
+  static Future<bool> checkEmailAvailability(String email) async {
+    final response = await ApiService.get(
+      '/auth/check-email/$email',
+      includeAuth: false,
+    );
+
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return data['available'] as bool? ?? true;
+      }
+      return true;
+    }
+
+    throw Exception('Erreur lors de la vérification de l\'email');
+  }
+
+  static Future<Map<String, dynamic>> testEndpoint() async {
+    final response = await ApiService.get('/auth/test');
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return data;
+      }
+    }
+    throw Exception('Erreur lors de l\'appel du endpoint de test');
   }
 
   // NOUVELLES MÉTHODES D'INSCRIPTION CORRIGÉES

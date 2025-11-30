@@ -8,6 +8,7 @@ class TicketService {
     required TicketPriority priority,
     required String subject,
     required String description,
+    List<String>? attachments,
   }) async {
     final body = {
       'user_id': userId,
@@ -15,6 +16,7 @@ class TicketService {
       'priority': priority.name,
       'subject': subject,
       'description': description,
+      if (attachments != null && attachments.isNotEmpty) 'attachments': attachments,
     };
 
     final response = await ApiService.post('/tickets/', body: body);
@@ -85,6 +87,40 @@ class TicketService {
     return [];
   }
 
+  static Future<Ticket> getTicket(String ticketId) async {
+    final response = await ApiService.get('/tickets/$ticketId');
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return Ticket.fromJson(data);
+      }
+    }
+    throw Exception('Ticket introuvable');
+  }
+
+  static Future<Ticket> updateTicket(
+    String ticketId, {
+    TicketCategory? category,
+    TicketPriority? priority,
+    String? subject,
+    String? description,
+  }) async {
+    final body = <String, dynamic>{};
+    if (category != null) body['category'] = category.name;
+    if (priority != null) body['priority'] = priority.name;
+    if (subject != null) body['subject'] = subject;
+    if (description != null) body['description'] = description;
+
+    final response = await ApiService.put('/tickets/$ticketId', body: body);
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return Ticket.fromJson(data);
+      }
+    }
+    throw Exception('Erreur lors de la mise à jour du ticket');
+  }
+
   static Future<Ticket> updateTicketStatus(
     String ticketId, {
     required TicketStatus status,
@@ -118,6 +154,35 @@ class TicketService {
     if (response.statusCode != 200) {
       throw Exception('Erreur lors de l\'ajout de la réponse');
     }
+  }
+
+  static Future<void> deleteTicket(String ticketId) async {
+    final response = await ApiService.delete('/tickets/$ticketId');
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors de la suppression du ticket');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getTicketStatsOverview() async {
+    final response = await ApiService.get('/tickets/stats/overview');
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return data;
+      }
+    }
+    throw Exception('Erreur lors de la récupération des statistiques des tickets');
+  }
+
+  static Future<Map<String, dynamic>> getMyTicketStats() async {
+    final response = await ApiService.get('/tickets/stats/my-stats');
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return data;
+      }
+    }
+    throw Exception('Erreur lors de la récupération des statistiques personnelles');
   }
 }
 

@@ -77,6 +77,19 @@ class ReviewService {
     return [];
   }
 
+  static Future<Review> getReview(String reviewId) async {
+    final response = await ApiService.get('/reviews/$reviewId');
+
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return Review.fromJson(data);
+      }
+    }
+
+    throw Exception('Erreur lors de la récupération de l\'avis');
+  }
+
   static Future<Review> updateReview(
     String reviewId, {
     int? rating,
@@ -111,6 +124,14 @@ class ReviewService {
     }
 
     throw Exception('Erreur lors de la récupération des statistiques');
+  }
+
+  static Future<void> deleteReview(String reviewId) async {
+    final response = await ApiService.delete('/reviews/$reviewId');
+
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors de la suppression de l\'avis');
+    }
   }
 }
 

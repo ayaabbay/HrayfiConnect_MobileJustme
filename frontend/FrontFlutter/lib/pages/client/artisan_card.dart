@@ -76,12 +76,16 @@ class ArtisanCard extends StatelessWidget {
                       ),
                       Row(
                         children: [
-                          // TODO: Charger le rating depuis ReviewService
-                          StarRatingWidget(rating: 0.0, size: 18),
+                          StarRatingWidget(rating: artisan.averageRating ?? 0.0, size: 18),
                           const SizedBox(width: 6),
                           Text(
-                            '0.0',
+                            (artisan.averageRating ?? 0).toStringAsFixed(1),
                             style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '(${artisan.totalReviews ?? 0})',
+                            style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey.shade500),
                           ),
                           const SizedBox(width: 8),
                           Text(

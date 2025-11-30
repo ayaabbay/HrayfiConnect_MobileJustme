@@ -1,6 +1,7 @@
 import '../models/message.dart';
 import 'api_service.dart';
 import 'storage_service.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
 
 class ChatService {
   /// Récupère toutes les conversations de l'utilisateur connecté
@@ -81,6 +82,21 @@ class ChatService {
     }
 
     throw Exception('Erreur lors de la récupération des statistiques');
+  }
+
+  static Future<WebSocketChannel> connectWebSocket() async {
+    final token = await StorageService.getToken();
+    final baseUri = Uri.parse('${ApiService.baseUrl}/chat/ws/chat');
+    final scheme = baseUri.scheme == 'https' ? 'wss' : 'ws';
+    final queryParams = Map<String, String>.from(baseUri.queryParameters);
+    if (token != null) {
+      queryParams['token'] = token;
+    }
+    final wsUri = baseUri.replace(
+      scheme: scheme,
+      queryParameters: queryParams.isEmpty ? null : queryParams,
+    );
+    return WebSocketChannel.connect(wsUri);
   }
 }
 

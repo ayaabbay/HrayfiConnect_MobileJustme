@@ -143,10 +143,10 @@ class _AdminTicketsPageState extends State<AdminTicketsPage> {
         return 'Technique';
       case TicketCategory.billing:
         return 'Facturation';
-      case TicketCategory.general:
-        return 'Général';
-      case TicketCategory.complaint:
-        return 'Réclamation';
+      case TicketCategory.account:
+        return 'Compte / Profil';
+      case TicketCategory.booking:
+        return 'Réservation';
       case TicketCategory.other:
         return 'Autre';
     }

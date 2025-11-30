@@ -15,8 +15,8 @@ enum TicketPriority {
 enum TicketCategory {
   technical,
   billing,
-  general,
-  complaint,
+  account,
+  booking,
   other,
 }
 
@@ -53,7 +53,7 @@ class Ticket {
       userId: json['user_id'] as String,
       category: TicketCategory.values.firstWhere(
         (e) => e.name == json['category'] as String,
-        orElse: () => TicketCategory.general,
+        orElse: () => TicketCategory.other,
       ),
       priority: TicketPriority.values.firstWhere(
         (e) => e.name == json['priority'] as String,

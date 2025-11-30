@@ -14,6 +14,17 @@ class UserService {
 
     throw Exception('Erreur lors de la récupération du profil');
   }
+
+  static Future<Client> getClient(String clientId) async {
+    final response = await ApiService.get('/users/clients/$clientId');
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return Client.fromJson(data);
+      }
+    }
+    throw Exception('Client introuvable');
+  }
   static Future<List<Client>> getClients({
     int skip = 0,
     int limit = 100,
@@ -65,6 +76,13 @@ class UserService {
     throw Exception('Erreur lors de la mise à jour du client');
   }
 
+  static Future<void> deleteClient(String clientId) async {
+    final response = await ApiService.delete('/users/clients/$clientId');
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors de la suppression du client');
+    }
+  }
+
   static Future<List<Artisan>> getArtisans({
     int skip = 0,
     int limit = 100,
@@ -95,6 +113,17 @@ class UserService {
     }
 
     return [];
+  }
+
+  static Future<Artisan> getArtisan(String artisanId) async {
+    final response = await ApiService.get('/users/artisans/$artisanId');
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return Artisan.fromJson(data);
+      }
+    }
+    throw Exception('Artisan introuvable');
   }
 }
 

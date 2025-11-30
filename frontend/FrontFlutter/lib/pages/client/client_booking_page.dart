@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../models/booking.dart';
+import '../../providers/review_provider.dart';
 import '../../services/booking_service.dart';
+import '../../services/storage_service.dart';
+import '../reviews/review_form_page.dart';
 import '../chat/chat_detail_page.dart';
 
 class ClientBookingPage extends StatefulWidget {
@@ -15,11 +18,28 @@ class _ClientBookingPageState extends State<ClientBookingPage> {
   List<Booking> _bookings = [];
   bool _isLoading = true;
   String? _error;
+  String? _userId;
+  late final ReviewProvider _reviewProvider;
 
   @override
   void initState() {
     super.initState();
+    _reviewProvider = ReviewProvider()..addListener(_handleReviewProvider);
     _loadBookings();
+    _loadUserInfoAndReviews();
+  }
+
+  @override
+  void dispose() {
+    _reviewProvider.removeListener(_handleReviewProvider);
+    _reviewProvider.dispose();
+    super.dispose();
+  }
+
+  void _handleReviewProvider() {
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   Future<void> _loadBookings() async {
@@ -39,6 +59,42 @@ class _ClientBookingPageState extends State<ClientBookingPage> {
         _error = e.toString();
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadUserInfoAndReviews() async {
+    final info = await StorageService.getUserInfo();
+    setState(() {
+      _userId = info['userId'];
+    });
+    await _reviewProvider.loadMyReviews();
+  }
+
+  Future<void> _openReviewForm(Booking booking) async {
+    if (_userId == null) return;
+    final existingReview = _reviewProvider.findMyReviewForBooking(booking.id);
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => ReviewFormPage(
+          artisanId: booking.artisanId,
+          artisanName: booking.artisanName ?? 'Artisan',
+          clientId: _userId!,
+          bookingId: booking.id,
+          existingReview: existingReview,
+        ),
+      ),
+    );
+
+    if (result == true) {
+      await _reviewProvider.loadMyReviews();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Avis enregistré'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     }
   }
 
@@ -100,6 +156,7 @@ class _ClientBookingPageState extends State<ClientBookingPage> {
                             itemBuilder: (context, index) {
                               final booking = _bookings[index];
                               final isUrgent = booking.urgency; // urgency est maintenant un bool
+                              final review = _reviewProvider.findMyReviewForBooking(booking.id);
                               return Card(
                                 child: ListTile(
                                   title: Text(booking.artisanName ?? 'Artisan'),
@@ -136,6 +193,12 @@ class _ClientBookingPageState extends State<ClientBookingPage> {
                                         icon: const Icon(Icons.chat_bubble_outline),
                                         tooltip: 'Ouvrir le chat',
                                       ),
+                                      if (booking.status == BookingStatus.completed)
+                                        IconButton(
+                                          onPressed: _userId == null ? null : () => _openReviewForm(booking),
+                                          icon: Icon(review != null ? Icons.edit : Icons.rate_review_outlined),
+                                          tooltip: review != null ? 'Modifier mon avis' : 'Laisser un avis',
+                                        ),
                                     ],
                                   ),
                                 ),

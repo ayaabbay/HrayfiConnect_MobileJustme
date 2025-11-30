@@ -15,9 +15,10 @@ class _ClientTicketPageState extends State<ClientTicketPage> {
   final _formKey = GlobalKey<FormState>();
   final _subjectController = TextEditingController();
   final _descriptionController = TextEditingController();
-  TicketCategory _selectedCategory = TicketCategory.general;
+  TicketCategory _selectedCategory = TicketCategory.technical;
   TicketPriority _selectedPriority = TicketPriority.medium;
   final List<String> _attachments = [];
+  final TextEditingController _attachmentController = TextEditingController();
   bool _isSubmitting = false;
   String? _error;
 
@@ -25,6 +26,7 @@ class _ClientTicketPageState extends State<ClientTicketPage> {
   void dispose() {
     _subjectController.dispose();
     _descriptionController.dispose();
+    _attachmentController.dispose();
     super.dispose();
   }
 
@@ -46,6 +48,7 @@ class _ClientTicketPageState extends State<ClientTicketPage> {
         priority: _selectedPriority,
         subject: _subjectController.text.trim(),
         description: _descriptionController.text.trim(),
+        attachments: _attachments.isEmpty ? null : _attachments,
       );
 
       if (mounted) {
@@ -135,12 +138,12 @@ class _ClientTicketPageState extends State<ClientTicketPage> {
                   child: Text('Problème de facturation'),
                 ),
                 DropdownMenuItem(
-                  value: TicketCategory.general,
-                  child: Text('Général'),
+                  value: TicketCategory.account,
+                  child: Text('Compte / Profil'),
                 ),
                 DropdownMenuItem(
-                  value: TicketCategory.complaint,
-                  child: Text('Réclamation'),
+                  value: TicketCategory.booking,
+                  child: Text('Réservation'),
                 ),
                 DropdownMenuItem(
                   value: TicketCategory.other,
@@ -237,12 +240,42 @@ class _ClientTicketPageState extends State<ClientTicketPage> {
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
-              onPressed: () {
-                // Simuler l'ajout d'une pièce jointe
-                setState(() {
-                  _attachments.add('capture_${_attachments.length + 1}.png');
-                });
-              },
+              onPressed: _isSubmitting
+                  ? null
+                  : () async {
+                      final result = await showDialog<String>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Ajouter une pièce jointe (URL)'),
+                          content: TextField(
+                            controller: _attachmentController,
+                            decoration: const InputDecoration(
+                              labelText: 'Lien vers le fichier',
+                              hintText: 'https://…',
+                              border: OutlineInputBorder(),
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Annuler'),
+                            ),
+                            FilledButton(
+                              onPressed: () {
+                                Navigator.pop(context, _attachmentController.text.trim());
+                              },
+                              child: const Text('Ajouter'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (result != null && result.isNotEmpty) {
+                        setState(() {
+                          _attachments.add(result);
+                          _attachmentController.clear();
+                        });
+                      }
+                    },
               icon: const Icon(Icons.attach_file),
               label: const Text('Ajouter un fichier'),
             ),

@@ -383,5 +383,40 @@ class UploadService {
 
     throw Exception('Erreur lors de l\'upload des images du portfolio');
   }
-}
 
+  static Future<void> deleteProfilePicture() async {
+    final response = await ApiService.delete('/upload/profile-picture');
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors de la suppression de la photo de profil');
+    }
+  }
+
+  static Future<Map<String, dynamic>> getIdentityDocuments(String artisanId) async {
+    final response = await ApiService.get('/upload/artisans/$artisanId/identity-documents');
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return data;
+      }
+    }
+    throw Exception('Erreur lors de la récupération des documents d\'identité');
+  }
+
+  static Future<Map<String, dynamic>> getPortfolio() async {
+    final response = await ApiService.get('/upload/artisans/portfolio');
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return data;
+      }
+    }
+    throw Exception('Erreur lors de la récupération du portfolio');
+  }
+
+  static Future<void> deletePortfolioImage(int imageIndex) async {
+    final response = await ApiService.delete('/upload/artisans/portfolio/$imageIndex');
+    if (response.statusCode != 200) {
+      throw Exception('Erreur lors de la suppression de l\'image du portfolio');
+    }
+  }
+}
