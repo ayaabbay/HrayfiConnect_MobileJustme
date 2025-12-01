@@ -80,31 +80,73 @@ class _LoginPageState extends State<LoginPage> {
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
           child: Form(
             key: _formKey,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const SizedBox(height: 40),
-                Icon(
-                  Icons.login,
-                  size: 80,
-                  color: Theme.of(context).colorScheme.primary,
+                const SizedBox(height: 20),
+                // Animated icon
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 600),
+                  curve: Curves.easeOutBack,
+                  builder: (context, value, child) {
+                    return Transform.scale(
+                      scale: value,
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.login_rounded,
+                          size: 50,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(height: 24),
-                Text(
-                  'Connexion',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                  textAlign: TextAlign.center,
+                const SizedBox(height: 32),
+                // Title with fade animation
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0.0, end: 1.0),
+                  duration: const Duration(milliseconds: 500),
+                  builder: (context, value, child) {
+                    return Opacity(
+                      opacity: value,
+                      child: Transform.translate(
+                        offset: Offset(0, 10 * (1 - value)),
+                        child: child,
+                      ),
+                    );
+                  },
+                  child: Column(
+                    children: [
+                      Text(
+                        'Connexion',
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: -0.5,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Connectez-vous à votre compte',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  'Connectez-vous à votre compte',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 48),
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
@@ -159,25 +201,42 @@ class _LoginPageState extends State<LoginPage> {
                     child: const Text('Mot de passe oublié?'),
                   ),
                 ),
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _isLoading ? null : _handleLogin,
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
+                const SizedBox(height: 32),
+                // Login button with animation
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  child: FilledButton(
+                    onPressed: _isLoading ? null : _handleLogin,
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(56),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: _isLoading
+                        ? SizedBox(
+                            height: 24,
+                            width: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Theme.of(context).colorScheme.onPrimary,
+                              ),
+                            ),
+                          )
+                        : const Text(
+                            'Se connecter',
+                            style: TextStyle(fontSize: 16),
+                          ),
                   ),
-                  child: _isLoading
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Text('Se connecter'),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text('Pas encore de compte? '),
+                    Text(
+                      'Pas encore de compte? ',
+                      style: TextStyle(color: Colors.grey.shade600),
+                    ),
                     TextButton(
                       onPressed: () {
                         Navigator.of(context).push(
@@ -189,16 +248,6 @@ class _LoginPageState extends State<LoginPage> {
                       child: const Text('S\'inscrire'),
                     ),
                   ],
-                ),
-                const SizedBox(height: 16),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).pushReplacementNamed(
-                      RoleSelectorPage.routeName,
-                    );
-                  },
-                  icon: const Icon(Icons.arrow_back),
-                  label: const Text('Retour'),
                 ),
               ],
             ),

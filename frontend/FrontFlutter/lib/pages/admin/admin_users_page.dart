@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../../services/user_service.dart';
 import '../../services/artisan_service.dart';
+import 'admin_user_details_page.dart';
 
 class AdminUsersPage extends StatefulWidget {
   const AdminUsersPage({super.key});
@@ -150,24 +151,58 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final client = _clients[index];
+        // Récupérer la photo de profil depuis profilePicture ou profileData
+        final profilePicture = client.profilePicture ?? 
+                              (client.profileData['profile_picture'] as String?);
+        final hasProfilePicture = profilePicture != null && profilePicture.isNotEmpty;
+        
         return Card(
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: Colors.indigo.withOpacity(0.1),
               foregroundColor: Colors.indigo,
-              backgroundImage: client.profilePicture != null ? NetworkImage(client.profilePicture!) : null,
-              child: client.profilePicture == null ? const Icon(Icons.person_outline) : null,
+              backgroundImage: hasProfilePicture ? NetworkImage(profilePicture!) : null,
+              child: !hasProfilePicture ? const Icon(Icons.person_outline) : null,
             ),
             title: Text(client.fullName),
             subtitle: Text('${client.email} • ${client.phone}'),
             trailing: PopupMenuButton<String>(
-              onSelected: (value) {
-                // TODO: Implémenter les actions
+              onSelected: (value) async {
+                if (value == 'view') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AdminUserDetailsPage(client: client),
+                    ),
+                  );
+                } else if (value == 'disable') {
+                  // TODO: Implémenter la désactivation
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Fonctionnalité à venir')),
+                  );
+                }
               },
               itemBuilder: (context) => const [
-                PopupMenuItem(value: 'view', child: Text('Voir')),
-                PopupMenuItem(value: 'disable', child: Text('Désactiver')),
-                PopupMenuItem(value: 'reset', child: Text('Réinitialiser mot de passe')),
+                PopupMenuItem(
+                  value: 'view',
+                  child: Row(
+                    children: [
+                      Icon(Icons.visibility, size: 18),
+                      SizedBox(width: 8),
+                      Text('Voir'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'disable',
+                  child: Row(
+                    children: [
+                      Icon(Icons.block, size: 18, color: Colors.orange),
+                      SizedBox(width: 8),
+                      Text('Désactiver'),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -218,7 +253,14 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             trailing: PopupMenuButton<String>(
               onSelected: (value) async {
                 try {
-                  if (value == 'verify' && !artisan.isVerified) {
+                  if (value == 'view') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AdminUserDetailsPage(artisan: artisan),
+                      ),
+                    );
+                  } else if (value == 'verify' && !artisan.isVerified) {
                     await ArtisanService.verifyArtisan(artisan.id);
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(

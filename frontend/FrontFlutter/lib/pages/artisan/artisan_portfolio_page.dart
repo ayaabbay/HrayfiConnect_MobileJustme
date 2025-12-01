@@ -36,6 +36,14 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
   XFile? _selectedProfileImage;
   Uint8List? _selectedProfileImageBytes;
   final ImagePicker _imagePicker = ImagePicker();
+  
+  // Documents d'identité
+  String? _cinRectoUrl;
+  String? _cinVersoUrl;
+  XFile? _selectedCinRecto;
+  XFile? _selectedCinVerso;
+  Uint8List? _selectedCinRectoBytes;
+  Uint8List? _selectedCinVersoBytes;
 
   @override
   void initState() {
@@ -77,6 +85,14 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
         }).toList();
       }
       
+      // Charger les documents d'identité
+      final identityDocument = profileData['identity_document'];
+      String? cinRecto, cinVerso;
+      if (identityDocument is Map<String, dynamic>) {
+        cinRecto = identityDocument['cin_recto'] as String?;
+        cinVerso = identityDocument['cin_verso'] as String?;
+      }
+      
       setState(() {
         _firstNameController.text = profileData['first_name'] ?? '';
         _lastNameController.text = profileData['last_name'] ?? '';
@@ -87,6 +103,8 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
         _certifications = List<String>.from(profileData['certifications'] ?? []);
         _profilePictureUrl = profileData['profile_picture'] ?? profile['profile_picture'];
         _portfolioImages = portfolioItems;
+        _cinRectoUrl = cinRecto;
+        _cinVersoUrl = cinVerso;
         
         _isLoading = false;
       });
@@ -195,6 +213,114 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
       await _loadProfile();
 
       _showSuccessSnackBar('Image ajoutée au portfolio avec succès');
+    } catch (e) {
+      _showErrorSnackBar('Erreur lors de l\'upload: ${e.toString()}');
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
+    }
+  }
+
+  // MÉTHODE : Sélectionner le recto de la carte d'identité
+  Future<void> _pickCinRecto() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _selectedCinRecto = image;
+          _selectedCinRectoBytes = bytes;
+        });
+        
+        // Uploader l'image immédiatement
+        await _uploadCinRecto();
+      }
+    } catch (e) {
+      _showErrorSnackBar('Erreur lors de la sélection de l\'image: ${e.toString()}');
+    }
+  }
+
+  // MÉTHODE : Uploader le recto de la carte d'identité
+  Future<void> _uploadCinRecto() async {
+    if (_selectedCinRecto == null) return;
+
+    try {
+      setState(() {
+        _isSaving = true;
+      });
+
+      final uploadResult = await UploadService.uploadIdentityDocument(_selectedCinRecto!, 'cin_recto');
+      final uploadedUrl = uploadResult['url'] as String;
+
+      setState(() {
+        _cinRectoUrl = uploadedUrl;
+        _selectedCinRecto = null;
+        _selectedCinRectoBytes = null;
+      });
+
+      await _loadProfile();
+      _showSuccessSnackBar('Carte d\'identité recto uploadée avec succès');
+    } catch (e) {
+      _showErrorSnackBar('Erreur lors de l\'upload: ${e.toString()}');
+    } finally {
+      setState(() {
+        _isSaving = false;
+      });
+    }
+  }
+
+  // MÉTHODE : Sélectionner le verso de la carte d'identité
+  Future<void> _pickCinVerso() async {
+    try {
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _selectedCinVerso = image;
+          _selectedCinVersoBytes = bytes;
+        });
+        
+        // Uploader l'image immédiatement
+        await _uploadCinVerso();
+      }
+    } catch (e) {
+      _showErrorSnackBar('Erreur lors de la sélection de l\'image: ${e.toString()}');
+    }
+  }
+
+  // MÉTHODE : Uploader le verso de la carte d'identité
+  Future<void> _uploadCinVerso() async {
+    if (_selectedCinVerso == null) return;
+
+    try {
+      setState(() {
+        _isSaving = true;
+      });
+
+      final uploadResult = await UploadService.uploadIdentityDocument(_selectedCinVerso!, 'cin_verso');
+      final uploadedUrl = uploadResult['url'] as String;
+
+      setState(() {
+        _cinVersoUrl = uploadedUrl;
+        _selectedCinVerso = null;
+        _selectedCinVersoBytes = null;
+      });
+
+      await _loadProfile();
+      _showSuccessSnackBar('Carte d\'identité verso uploadée avec succès');
     } catch (e) {
       _showErrorSnackBar('Erreur lors de l\'upload: ${e.toString()}');
     } finally {
@@ -331,8 +457,7 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mon Portfolio Artisan'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -391,6 +516,10 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
           _buildCertificationsSection(),
           const SizedBox(height: 24),
           
+          // Carte d'identité
+          _buildIdentityCardSection(),
+          const SizedBox(height: 24),
+          
           // Portfolio Photos
           _buildPortfolioSection(),
           const SizedBox(height: 24),
@@ -404,16 +533,22 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
 
   Widget _buildProfilePictureSection() {
     return Card(
-      elevation: 4,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           children: [
-            const Text(
+            Text(
               'Photo de Profil',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             Stack(
               children: [
                 CircleAvatar(
@@ -448,10 +583,14 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
+            const SizedBox(height: 20),
+            FilledButton.icon(
               onPressed: _isSaving ? null : _pickProfilePicture,
-              child: const Text('Changer la photo'),
+              icon: const Icon(Icons.camera_alt_rounded, size: 20),
+              label: const Text('Changer la photo'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
             ),
           ],
         ),
@@ -470,17 +609,23 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
 
   Widget _buildPersonalInfoSection() {
     return Card(
-      elevation: 4,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Informations Personnelles',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             _buildFormField('Prénom', _firstNameController),
             _buildFormField('Nom', _lastNameController),
             _buildFormField('Email', _emailController, enabled: false),
@@ -495,34 +640,47 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
 
   Widget _buildCertificationsSection() {
     return Card(
-      elevation: 4,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Text(
+                Text(
                   'Certifications',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const Spacer(),
-                IconButton(
-                  icon: const Icon(Icons.add),
+                IconButton.filledTonal(
+                  icon: const Icon(Icons.add_rounded),
                   onPressed: _isSaving ? null : _addCertification,
+                  tooltip: 'Ajouter une certification',
                 ),
               ],
             ),
+            const SizedBox(height: 16),
             Wrap(
-              spacing: 8,
+              spacing: 12,
+              runSpacing: 12,
               children: _certifications.map((cert) => Chip(
                 label: Text(cert),
+                deleteIcon: const Icon(Icons.close_rounded, size: 18),
                 onDeleted: _isSaving ? null : () {
                   setState(() {
                     _certifications.remove(cert);
                   });
                 },
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
               )).toList(),
             ),
           ],
@@ -531,28 +689,268 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
     );
   }
 
-  Widget _buildPortfolioSection() {
+  Widget _buildIdentityCardSection() {
     return Card(
-      elevation: 4,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
+              'Carte d\'Identité',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                // Recto
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Recto',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _isSaving ? null : _pickCinRecto,
+                        child: Container(
+                          height: 150,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.grey.shade100,
+                          ),
+                          child: _getCinRectoImage(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton.icon(
+                        onPressed: _isSaving ? null : _pickCinRecto,
+                        icon: const Icon(Icons.upload_rounded, size: 18),
+                        label: const Text('Recto'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 16),
+                // Verso
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Text(
+                        'Verso',
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: _isSaving ? null : _pickCinVerso,
+                        child: Container(
+                          height: 150,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8),
+                            color: Colors.grey.shade100,
+                          ),
+                          child: _getCinVersoImage(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton.icon(
+                        onPressed: _isSaving ? null : _pickCinVerso,
+                        icon: const Icon(Icons.upload_rounded, size: 18),
+                        label: const Text('Verso'),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _getCinRectoImage() {
+    if (_selectedCinRectoBytes != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.memory(
+          _selectedCinRectoBytes!,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: 150,
+        ),
+      );
+    } else if (_cinRectoUrl != null && _cinRectoUrl!.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          _cinRectoUrl!,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: 150,
+          errorBuilder: (context, error, stackTrace) {
+            return const Center(
+              child: Icon(Icons.broken_image, color: Colors.grey),
+            );
+          },
+        ),
+      );
+    } else {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.credit_card, size: 48, color: Colors.grey),
+            SizedBox(height: 8),
+            Text(
+              'Ajouter recto',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _getCinVersoImage() {
+    if (_selectedCinVersoBytes != null) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.memory(
+          _selectedCinVersoBytes!,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: 150,
+        ),
+      );
+    } else if (_cinVersoUrl != null && _cinVersoUrl!.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Image.network(
+          _cinVersoUrl!,
+          fit: BoxFit.cover,
+          width: double.infinity,
+          height: 150,
+          errorBuilder: (context, error, stackTrace) {
+            return const Center(
+              child: Icon(Icons.broken_image, color: Colors.grey),
+            );
+          },
+        ),
+      );
+    } else {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.credit_card, size: 48, color: Colors.grey),
+            SizedBox(height: 8),
+            Text(
+              'Ajouter verso',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildPortfolioSection() {
+    // Combiner les images du portfolio avec les images de carte d'identité
+    List<Map<String, dynamic>> allImages = [];
+    
+    // Ajouter les images de carte d'identité si elles existent
+    if (_cinRectoUrl != null && _cinRectoUrl!.isNotEmpty) {
+      allImages.add({
+        'url': _cinRectoUrl!,
+        'type': 'cin_recto',
+        'label': 'Carte d\'identité - Recto',
+      });
+    }
+    if (_cinVersoUrl != null && _cinVersoUrl!.isNotEmpty) {
+      allImages.add({
+        'url': _cinVersoUrl!,
+        'type': 'cin_verso',
+        'label': 'Carte d\'identité - Verso',
+      });
+    }
+    
+    // Ajouter les images du portfolio
+    for (var image in _portfolioImages) {
+      allImages.add({
+        'url': image['url'] ?? '',
+        'type': 'portfolio',
+        'index': _portfolioImages.indexOf(image),
+      });
+    }
+    
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
               'Portfolio',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
+            const SizedBox(height: 20),
+            FilledButton.icon(
               onPressed: _isSaving ? null : _pickPortfolioImage,
-              child: const Text('Ajouter une image au portfolio'),
+              icon: const Icon(Icons.add_photo_alternate_rounded, size: 20),
+              label: const Text('Ajouter une image au portfolio'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              ),
             ),
-            const SizedBox(height: 16),
-            _portfolioImages.isEmpty
-                ? const Text(
-                    'Aucune image dans le portfolio',
-                    style: TextStyle(color: Colors.grey),
+            const SizedBox(height: 24),
+            allImages.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.image_outlined,
+                            size: 64,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'Aucune image dans le portfolio',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   )
                 : GridView.builder(
                     shrinkWrap: true,
@@ -562,9 +960,12 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
                       crossAxisSpacing: 8,
                       mainAxisSpacing: 8,
                     ),
-                    itemCount: _portfolioImages.length,
+                    itemCount: allImages.length,
                     itemBuilder: (context, index) {
-                      final image = _portfolioImages[index];
+                      final image = allImages[index];
+                      final isIdentityCard = image['type'] == 'cin_recto' || image['type'] == 'cin_verso';
+                      final portfolioIndex = image['index'];
+                      
                       return Stack(
                         children: [
                           ClipRRect(
@@ -582,19 +983,42 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
                               },
                             ),
                           ),
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: CircleAvatar(
-                              radius: 12,
-                              backgroundColor: Colors.red,
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                icon: const Icon(Icons.close, size: 12, color: Colors.white),
-                                onPressed: _isSaving ? null : () => _removePortfolioImage(index),
+                          // Badge pour les cartes d'identité
+                          if (isIdentityCard)
+                            Positioned(
+                              top: 4,
+                              left: 4,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withOpacity(0.8),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  image['type'] == 'cin_recto' ? 'Recto' : 'Verso',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                          // Bouton de suppression uniquement pour les images du portfolio
+                          if (!isIdentityCard && portfolioIndex != null)
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: CircleAvatar(
+                                radius: 12,
+                                backgroundColor: Colors.red,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  icon: const Icon(Icons.close, size: 12, color: Colors.white),
+                                  onPressed: _isSaving ? null : () => _removePortfolioImage(portfolioIndex),
+                                ),
+                              ),
+                            ),
                         ],
                       );
                     },
@@ -606,19 +1030,29 @@ class _ArtisanPortfolioPageState extends State<ArtisanPortfolioPage> {
   }
 
   Widget _buildSaveButton() {
-    return Center(
-      child: ElevatedButton(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: FilledButton(
         onPressed: _isSaving ? null : _saveProfile,
-        style: ElevatedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size.fromHeight(56),
+          padding: const EdgeInsets.symmetric(vertical: 16),
         ),
         child: _isSaving
-            ? const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
+            ? SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.onPrimary,
+                  ),
+                ),
               )
-            : const Text('Sauvegarder le Profil'),
+            : const Text(
+                'Sauvegarder le Profil',
+                style: TextStyle(fontSize: 16),
+              ),
       ),
     );
   }

@@ -129,7 +129,7 @@ class BookingService {
   static Future<void> updateStatus(String bookingId, BookingStatus status) async {
     final response = await ApiService.put(
       '/bookings/$bookingId/status',
-      body: {'status': status.name},
+      body: {'status': status.value},
     );
 
     if (response.statusCode != 200) {
@@ -148,6 +148,46 @@ class BookingService {
     }
 
     throw Exception('Erreur lors de la récupération des statistiques');
+  }
+
+  // ========== ADMIN METHODS ==========
+  // Note: Le backend n'a pas d'endpoint admin dédié pour les bookings
+  // Les admins peuvent utiliser les mêmes endpoints que les utilisateurs normaux
+  // Pour obtenir toutes les bookings, un admin devrait utiliser getMyBookings
+  // mais cela ne fonctionnera que si l'admin a des bookings personnelles
+  
+  /// Met à jour une réservation (Admin peut tout modifier)
+  static Future<Booking> updateBookingAsAdmin(
+    String bookingId, {
+    DateTime? scheduledDate,
+    String? description,
+    bool? urgency,
+    String? address,
+    BookingStatus? status,
+  }) async {
+    final body = <String, dynamic>{};
+    if (scheduledDate != null) {
+      final utcDate = scheduledDate.isUtc ? scheduledDate : scheduledDate.toUtc();
+      body['scheduled_date'] = utcDate.toIso8601String();
+    }
+    if (description != null) body['description'] = description;
+    if (urgency != null) body['urgency'] = urgency;
+    if (address != null) body['address'] = address;
+    if (status != null) body['status'] = status.value;
+
+    final response = await ApiService.put('/bookings/$bookingId', body: body);
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return Booking.fromJson(data);
+      }
+    }
+    throw Exception('Erreur lors de la mise à jour de la réservation');
+  }
+
+  /// Supprime une réservation (Admin seulement)
+  static Future<void> deleteBookingAsAdmin(String bookingId) async {
+    await deleteBooking(bookingId);
   }
 }
 

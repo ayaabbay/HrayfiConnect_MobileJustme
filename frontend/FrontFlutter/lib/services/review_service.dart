@@ -19,7 +19,7 @@ class ReviewService {
       'title': title,
     };
 
-    final response = await ApiService.post('/reviews', body: body);
+    final response = await ApiService.post('/reviews/', body: body);
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final data = ApiService.parseResponse(response);
@@ -132,6 +132,15 @@ class ReviewService {
     if (response.statusCode != 200) {
       throw Exception('Erreur lors de la suppression de l\'avis');
     }
+  }
+
+  // ========== ADMIN METHODS ==========
+  // Note: Le backend n'a pas d'endpoint admin dédié pour récupérer tous les reviews
+  // Les admins peuvent supprimer des reviews via l'endpoint standard deleteReview
+  
+  /// Supprime un avis (Admin seulement)
+  static Future<void> deleteReviewAsAdmin(String reviewId) async {
+    await deleteReview(reviewId);
   }
 }
 

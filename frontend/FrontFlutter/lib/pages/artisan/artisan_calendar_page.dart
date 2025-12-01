@@ -14,6 +14,7 @@ class ArtisanCalendarPage extends StatefulWidget {
 class _ArtisanCalendarPageState extends State<ArtisanCalendarPage> {
   List<ArtisanAppointment> _appointments = [];
   DateTime _selectedDate = DateTime.now();
+  DateTime _currentMonth = DateTime.now(); // Mois actuellement affiché
   bool _isLoading = true;
   String? _error;
 
@@ -96,45 +97,53 @@ class _ArtisanCalendarPageState extends State<ArtisanCalendarPage> {
                   children: [
                     // Header Calendrier
                     Container(
-                      padding: EdgeInsets.all(16),
+                      padding: const EdgeInsets.all(16),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             'Calendrier',
-                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.refresh),
+                            icon: const Icon(Icons.refresh_rounded),
                             onPressed: _loadBookings,
+                            tooltip: 'Actualiser',
                           ),
                         ],
                       ),
                     ),
           
-                    // Vue Mois
-                    Container(
-                      padding: EdgeInsets.all(16),
-                      child: _buildMonthView(),
+                    // Vue Mois avec navigation
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          child: _buildMonthView(),
+                        ),
+                      ),
                     ),
           
                     // Rendez-vous du jour
-                    Expanded(
-                      child: Container(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Rendez-vous du ${_selectedDate.day}/${_selectedDate.month}',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    Container(
+                      height: 200,
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Rendez-vous du ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
                             ),
-                            SizedBox(height: 16),
-                            Expanded(
-                              child: _buildAppointmentsList(),
-                            ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(height: 16),
+                          Expanded(
+                            child: _buildAppointmentsList(),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -143,114 +152,229 @@ class _ArtisanCalendarPageState extends State<ArtisanCalendarPage> {
   }
 
   Widget _buildMonthView() {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 8,
-            offset: Offset(0, 2),
-          ),
-        ],
+    // Obtenir le premier jour du mois et le nombre de jours dans le mois
+    final firstDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month, 1);
+    final lastDayOfMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0);
+    final daysInMonth = lastDayOfMonth.day;
+    
+    // Obtenir le jour de la semaine du premier jour (1 = lundi, 7 = dimanche)
+    int firstWeekday = firstDayOfMonth.weekday;
+    
+    // Obtenir le dernier jour du mois précédent pour afficher les jours précédents
+    final previousMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 0);
+    final daysInPreviousMonth = previousMonth.day;
+    
+    // Calculer le nombre total de cellules nécessaires (jours du mois + jours précédents + jours suivants)
+    final totalCells = ((firstWeekday - 1) + daysInMonth + (7 - lastDayOfMonth.weekday));
+    final weeksCount = (totalCells / 7).ceil();
+    
+    // Noms des mois en français
+    final monthNames = [
+      'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+      'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+    ];
+    
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: Colors.grey.shade200, width: 1),
       ),
-      child: Column(
-        children: [
-          // En-tête jours
-          Row(
-            children: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
-                .map((day) => Expanded(
-                      child: Container(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        child: Text(
-                          day,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            // En-tête avec navigation
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.chevron_left_rounded),
+                  onPressed: () {
+                    setState(() {
+                      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1);
+                    });
+                  },
+                  tooltip: 'Mois précédent',
+                ),
+                Column(
+                  children: [
+                    Text(
+                      '${monthNames[_currentMonth.month - 1]} ${_currentMonth.year}',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
                       ),
-                    ))
-                .toList(),
-          ),
-          
-          // Grille des jours
-          GridView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 7,
-              childAspectRatio: 1.2,
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _currentMonth = DateTime.now();
+                          _selectedDate = DateTime.now();
+                        });
+                      },
+                      child: const Text('Aujourd\'hui', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.chevron_right_rounded),
+                  onPressed: () {
+                    setState(() {
+                      _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1);
+                    });
+                  },
+                  tooltip: 'Mois suivant',
+                ),
+              ],
             ),
-            itemCount: 35, // 5 semaines
-            itemBuilder: (context, index) {
-              final day = index - 2; // Ajuster pour commencer au bon jour
-              final currentDay = DateTime.now();
-              final displayDate = DateTime(currentDay.year, currentDay.month, currentDay.day + day);
-              
-              final hasAppointment = _appointments.any((apt) =>
-                  apt.dateTime.year == displayDate.year &&
-                  apt.dateTime.month == displayDate.month &&
-                  apt.dateTime.day == displayDate.day);
-              
-              // Récupérer les rendez-vous de ce jour
-              final dayAppointments = _appointments.where((apt) =>
-                  apt.dateTime.year == displayDate.year &&
-                  apt.dateTime.month == displayDate.month &&
-                  apt.dateTime.day == displayDate.day).toList();
-              
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedDate = displayDate;
-                  });
-                  
-                  // Si la date a des rendez-vous, afficher la modale
-                  if (hasAppointment && dayAppointments.isNotEmpty) {
-                    _showReservationDetails(context, displayDate, dayAppointments);
-                  }
-                },
-                child: Container(
-                  margin: EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: _selectedDate.day == displayDate.day && 
-                           _selectedDate.month == displayDate.month
-                        ? Colors.blue
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        displayDate.day.toString(),
-                        style: TextStyle(
-                          color: _selectedDate.day == displayDate.day && 
-                                 _selectedDate.month == displayDate.month
-                              ? Colors.white
-                              : Colors.black,
-                          fontWeight: hasAppointment ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                      if (hasAppointment)
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: _selectedDate.day == displayDate.day && 
-                                   _selectedDate.month == displayDate.month
-                                ? Colors.white
-                                : Colors.red,
-                            shape: BoxShape.circle,
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            
+            // En-tête jours de la semaine
+            Row(
+              children: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']
+                  .map((day) => Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          child: Text(
+                            day,
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey.shade700,
+                            ),
                           ),
                         ),
-                    ],
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 8),
+            
+            // Grille des jours du mois complet
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 7,
+                childAspectRatio: 1.0,
+                crossAxisSpacing: 4,
+                mainAxisSpacing: 4,
+              ),
+              itemCount: weeksCount * 7,
+              itemBuilder: (context, index) {
+                DateTime displayDate;
+                bool isCurrentMonth = false;
+                bool isToday = false;
+                
+                if (index < firstWeekday - 1) {
+                  // Jours du mois précédent
+                  final day = daysInPreviousMonth - (firstWeekday - 2 - index);
+                  displayDate = DateTime(_currentMonth.year, _currentMonth.month - 1, day);
+                } else if (index < firstWeekday - 1 + daysInMonth) {
+                  // Jours du mois actuel
+                  final day = index - (firstWeekday - 1) + 1;
+                  displayDate = DateTime(_currentMonth.year, _currentMonth.month, day);
+                  isCurrentMonth = true;
+                } else {
+                  // Jours du mois suivant
+                  final day = index - (firstWeekday - 1 + daysInMonth) + 1;
+                  displayDate = DateTime(_currentMonth.year, _currentMonth.month + 1, day);
+                }
+                
+                // Vérifier si c'est aujourd'hui
+                final now = DateTime.now();
+                isToday = displayDate.year == now.year &&
+                         displayDate.month == now.month &&
+                         displayDate.day == now.day;
+                
+                // Vérifier si la date est sélectionnée
+                final isSelected = _selectedDate.year == displayDate.year &&
+                                  _selectedDate.month == displayDate.month &&
+                                  _selectedDate.day == displayDate.day;
+                
+                // Vérifier s'il y a des rendez-vous
+                final hasAppointment = _appointments.any((apt) =>
+                    apt.dateTime.year == displayDate.year &&
+                    apt.dateTime.month == displayDate.month &&
+                    apt.dateTime.day == displayDate.day);
+                
+                // Récupérer les rendez-vous de ce jour
+                final dayAppointments = _appointments.where((apt) =>
+                    apt.dateTime.year == displayDate.year &&
+                    apt.dateTime.month == displayDate.month &&
+                    apt.dateTime.day == displayDate.day).toList();
+                
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedDate = displayDate;
+                      // Si on clique sur un jour d'un autre mois, changer de mois
+                      if (!isCurrentMonth) {
+                        _currentMonth = DateTime(displayDate.year, displayDate.month);
+                      }
+                    });
+                    
+                    // Si la date a des rendez-vous, afficher la modale
+                    if (hasAppointment && dayAppointments.isNotEmpty) {
+                      _showReservationDetails(context, displayDate, dayAppointments);
+                    }
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : isToday
+                              ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                              : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: isToday && !isSelected
+                          ? Border.all(
+                              color: Theme.of(context).colorScheme.primary,
+                              width: 2,
+                            )
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          displayDate.day.toString(),
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : isCurrentMonth
+                                    ? Colors.black87
+                                    : Colors.grey.shade400,
+                            fontWeight: isSelected || hasAppointment
+                                ? FontWeight.w600
+                                : isToday
+                                    ? FontWeight.w500
+                                    : FontWeight.normal,
+                            fontSize: isToday ? 16 : 14,
+                          ),
+                        ),
+                        if (hasAppointment)
+                          Container(
+                            margin: const EdgeInsets.only(top: 2),
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white
+                                  : Theme.of(context).colorScheme.error,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
-        ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

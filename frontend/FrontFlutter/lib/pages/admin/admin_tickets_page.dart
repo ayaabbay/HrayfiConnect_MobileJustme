@@ -187,21 +187,43 @@ class _AdminTicketsPageState extends State<AdminTicketsPage> {
             FilledButton(
               onPressed: () async {
                 try {
+                  // Afficher un indicateur de chargement
+                  if (mounted) {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+                  
                   await TicketService.updateTicketStatus(
                     ticket.id,
                     status: TicketStatus.inProgress,
                   );
+                  
                   _loadTickets();
+                  
                   if (mounted) {
-                    Navigator.of(context).pop();
+                    Navigator.of(context).pop(); // Fermer le dialog de chargement
+                    Navigator.of(context).pop(); // Fermer le dialog de détails
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Ticket mis à jour')),
+                      const SnackBar(
+                        content: Text('Ticket pris en charge. Un email a été envoyé au client.'),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 4),
+                      ),
                     );
                   }
                 } catch (e) {
                   if (mounted) {
+                    Navigator.of(context).pop(); // Fermer le dialog de chargement si ouvert
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erreur: ${e.toString()}')),
+                      SnackBar(
+                        content: Text('Erreur: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                      ),
                     );
                   }
                 }

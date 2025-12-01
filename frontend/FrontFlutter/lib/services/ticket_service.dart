@@ -66,11 +66,24 @@ class TicketService {
   static Future<List<Ticket>> getAllTickets({
     int skip = 0,
     int limit = 100,
+    String? status,
+    String? category,
+    String? priority,
   }) async {
     final queryParams = <String, String>{
       'skip': skip.toString(),
       'limit': limit.toString(),
     };
+    
+    if (status != null) {
+      queryParams['status'] = status;
+    }
+    if (category != null) {
+      queryParams['category'] = category;
+    }
+    if (priority != null) {
+      queryParams['priority'] = priority;
+    }
 
     final response = await ApiService.get(
       '/tickets/',
@@ -127,7 +140,7 @@ class TicketService {
     String? adminNotes,
   }) async {
     final body = <String, dynamic>{
-      'status': status.name,
+      'status': status.backendValue, // Utiliser backendValue au lieu de name
     };
     if (adminNotes != null) {
       body['admin_notes'] = adminNotes;

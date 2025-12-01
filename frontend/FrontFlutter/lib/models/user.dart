@@ -50,15 +50,19 @@ class Client extends User {
   factory Client.fromJson(Map<String, dynamic> json) {
     final profileData = json['profile_data'] as Map<String, dynamic>? ?? {};
     
+    // Gérer profile_picture depuis profile_data ou directement depuis json
+    final profilePicture = profileData['profile_picture'] as String? ?? 
+                          json['profile_picture'] as String?;
+    
     return Client(
       id: json['id'] as String,
       email: json['email'] as String,
       phone: json['phone'] as String,
-      firstName: profileData['first_name'] as String? ?? '', // ✅ CORRIGÉ
-      lastName: profileData['last_name'] as String? ?? '',   // ✅ CORRIGÉ
+      firstName: profileData['first_name'] as String? ?? '',
+      lastName: profileData['last_name'] as String? ?? '',
       address: profileData['address'] as String?,
-      profilePicture: profileData['profile_picture'],        // ✅ UNE SEULE FOIS
-      profileData: profileData,                              // ✅ AJOUTÉ
+      profilePicture: profilePicture,
+      profileData: profileData,
     );
   }
 

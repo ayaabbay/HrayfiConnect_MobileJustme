@@ -2,7 +2,37 @@ enum TicketStatus {
   open,
   inProgress,
   resolved,
-  closed,
+  closed;
+
+  /// Convertit le statut en format backend (snake_case)
+  String get backendValue {
+    switch (this) {
+      case TicketStatus.open:
+        return 'open';
+      case TicketStatus.inProgress:
+        return 'in_progress';
+      case TicketStatus.resolved:
+        return 'resolved';
+      case TicketStatus.closed:
+        return 'closed';
+    }
+  }
+
+  /// Convertit le format backend (snake_case) vers l'enum
+  static TicketStatus fromBackendValue(String value) {
+    switch (value) {
+      case 'open':
+        return TicketStatus.open;
+      case 'in_progress':
+        return TicketStatus.inProgress;
+      case 'resolved':
+        return TicketStatus.resolved;
+      case 'closed':
+        return TicketStatus.closed;
+      default:
+        return TicketStatus.open;
+    }
+  }
 }
 
 enum TicketPriority {
@@ -61,10 +91,7 @@ class Ticket {
       ),
       subject: json['subject'] as String,
       description: json['description'] as String,
-      status: TicketStatus.values.firstWhere(
-        (e) => e.name == json['status'] as String,
-        orElse: () => TicketStatus.open,
-      ),
+      status: TicketStatus.fromBackendValue(json['status'] as String),
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       attachments: json['attachments'] != null

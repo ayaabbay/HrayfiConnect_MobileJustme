@@ -5,6 +5,7 @@ import 'pages/auth/register_page.dart';
 import 'pages/client/client_shell.dart';
 import 'pages/artisan/artisan_shell.dart';
 import 'pages/admin/admin_shell.dart';
+import 'theme/app_theme.dart';
 
 void main() {
   runApp(const FrontFlutterApp());
@@ -17,10 +18,8 @@ class FrontFlutterApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Front Flutter',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
+      debugShowCheckedModeBanner: false,
       initialRoute: '/login',
       routes: {
         '/login': (context) => const LoginPage(),

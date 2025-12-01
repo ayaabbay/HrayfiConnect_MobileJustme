@@ -43,12 +43,22 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
       final clients = await UserService.getClients(limit: 1000);
       final artisans = await UserService.getArtisans(limit: 1000);
 
+      // Récupérer les bookings
+      int totalBookings = 0;
+      try {
+        final bookings = await AdminService.getAllBookings(limit: 1000);
+        totalBookings = bookings.length;
+      } catch (e) {
+        print('Erreur récupération bookings: $e');
+        // Continuer même si les bookings ne peuvent pas être récupérés
+      }
+
       setState(() {
         _stats = {
           'total_users': clients.length + artisans.length,
           'total_clients': clients.length,
           'total_artisans': artisans.length,
-          'total_bookings': 0, // Pas d'endpoint admin pour les bookings
+          'total_bookings': totalBookings,
           'tickets_open': ticketStats['open'] ?? 0,
           'tickets_total': ticketStats['total'] ?? 0,
         };
@@ -128,6 +138,12 @@ class _AdminDashboardPageState extends State<AdminDashboardPage> {
                           value: _formatNumber(_stats['total_clients'] ?? 0),
                           icon: Icons.person_outline,
                           color: Colors.blue,
+                        ),
+                        _StatCard(
+                          title: 'Réservations',
+                          value: _formatNumber(_stats['total_bookings'] ?? 0),
+                          icon: Icons.calendar_today_outlined,
+                          color: Colors.purple,
                         ),
                         _StatCard(
                           title: 'Tickets ouverts',

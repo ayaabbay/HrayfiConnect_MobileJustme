@@ -125,5 +125,52 @@ class UserService {
     }
     throw Exception('Artisan introuvable');
   }
+
+  /// Récupère les artisans en attente de vérification (Admin seulement)
+  /// Utilise l'endpoint /users/artisans/ avec verified=false
+  static Future<List<Artisan>> getPendingVerificationArtisans({
+    int skip = 0,
+    int limit = 100,
+  }) async {
+    return await getArtisans(
+      skip: skip,
+      limit: limit,
+      verified: false,
+    );
+  }
+
+  /// Met à jour un artisan (Admin ou propriétaire)
+  static Future<Artisan> updateArtisan(
+    String artisanId, {
+    String? firstName,
+    String? lastName,
+    String? companyName,
+    String? trade,
+    String? description,
+    int? yearsOfExperience,
+    List<String>? certifications,
+    String? phone,
+    String? address,
+  }) async {
+    final body = <String, dynamic>{};
+    if (firstName != null) body['first_name'] = firstName;
+    if (lastName != null) body['last_name'] = lastName;
+    if (companyName != null) body['company_name'] = companyName;
+    if (trade != null) body['trade'] = trade;
+    if (description != null) body['description'] = description;
+    if (yearsOfExperience != null) body['years_of_experience'] = yearsOfExperience;
+    if (certifications != null) body['certifications'] = certifications;
+    if (phone != null) body['phone'] = phone;
+    if (address != null) body['address'] = address;
+
+    final response = await ApiService.put('/users/artisans/$artisanId', body: body);
+    if (response.statusCode == 200) {
+      final data = ApiService.parseResponse(response);
+      if (data != null) {
+        return Artisan.fromJson(data);
+      }
+    }
+    throw Exception('Erreur lors de la mise à jour de l\'artisan');
+  }
 }
 
