@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/storage_service.dart';
 import 'client_home_page.dart';
 import 'client_booking_page.dart';
 import 'client_chat_list_page.dart';
@@ -21,6 +22,26 @@ class _ClientShellState extends State<ClientShell> {
     ClientChatListPage(),
     ClientProfilePage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Vérifier après la première frame que l'utilisateur est bien authentifié
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureAuthenticated());
+  }
+
+  Future<void> _ensureAuthenticated() async {
+    final token = await StorageService.getToken();
+    if (!mounted) return;
+
+    if (token == null) {
+      // Si le token n'existe plus (déconnexion), renvoyer vers la page de login
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (route) => false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

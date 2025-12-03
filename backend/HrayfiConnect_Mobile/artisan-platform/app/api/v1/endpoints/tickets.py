@@ -221,10 +221,13 @@ async def update_ticket_status(
     ticket_id: str,
     status_update: TicketStatusUpdate,
     current_user: dict = Depends(get_current_user),
-    ticket_manager: TicketManager = Depends(get_ticket_manager)
+    ticket_manager: TicketManager = Depends(get_ticket_manager),
+    user_manager: UserManager = Depends(get_user_manager)
 ):
     """
     Met à jour le statut d'un ticket (Admin seulement)
+    - Envoie un email au client si le ticket passe à "in_progress"
+    - Envoie un email au client si le ticket passe à "resolved" (complété)
     """
     if current_user.get("user_type") != "admin":
         raise HTTPException(
@@ -239,6 +242,10 @@ async def update_ticket_status(
             detail="Ticket non trouvé"
         )
     
+    # Vérifier si le statut passe à "in_progress" (prise en charge)
+    old_status = ticket.get("status")
+    new_status = status_update.status
+    
     update_data = status_update.model_dump(exclude_unset=True)
     
     updated_ticket = await ticket_manager.update_ticket_status(
@@ -252,6 +259,36 @@ async def update_ticket_status(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erreur lors de la mise à jour du statut"
         )
+    
+    # Envoyer un email au client si le ticket vient d'être pris en charge ou complété
+    # Comparer les valeurs string car old_status vient de la base de données
+    from app.utils.email_service import email_service
+
+    try:
+        client = await user_manager.find_user_by_id(ticket["user_id"])
+        if client and client.get("email"):
+            # Ticket pris en charge
+            if (new_status == TicketStatus.IN_PROGRESS and 
+                str(old_status) != TicketStatus.IN_PROGRESS.value):
+                await email_service.send_ticket_taken_in_charge(
+                    to_email=client["email"],
+                    ticket_subject=ticket.get("subject", "Votre ticket"),
+                    ticket_id=ticket_id
+                )
+                print(f"✅ Email de prise en charge envoyé au client {client['email']}")
+
+            # Ticket complété / résolu
+            if (new_status == TicketStatus.RESOLVED and 
+                str(old_status) != TicketStatus.RESOLVED.value):
+                await email_service.send_ticket_completed(
+                    to_email=client["email"],
+                    ticket_subject=updated_ticket.get("subject", ticket.get("subject", "Votre ticket")),
+                    ticket_id=ticket_id
+                )
+                print(f"✅ Email de ticket complété envoyé au client {client['email']}")
+    except Exception as e:
+        # Ne pas faire échouer la requête si l'email échoue
+        print(f"⚠️ Erreur lors de l'envoi de l'email de notification: {e}")
     
     updated_ticket["id"] = str(updated_ticket["_id"])
     return TicketResponse(**updated_ticket)

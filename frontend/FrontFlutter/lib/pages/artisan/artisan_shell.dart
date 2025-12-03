@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/storage_service.dart';
 import 'artisan_urgent_dashboard_page.dart';
 import 'artisan_messages_page.dart';
 import 'artisan_calendar_page.dart';
@@ -51,6 +52,20 @@ class _ArtisanShellState extends State<ArtisanShell> {
       const ArtisanCalendarPage(),
       const ArtisanPortfolioPage(),
     ];
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureAuthenticated());
+  }
+
+  Future<void> _ensureAuthenticated() async {
+    final token = await StorageService.getToken();
+    if (!mounted) return;
+
+    if (token == null) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (route) => false,
+      );
+    }
   }
 
   @override

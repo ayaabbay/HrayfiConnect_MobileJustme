@@ -121,6 +121,203 @@ class EmailService:
         except Exception as e:
             print(f"❌ Erreur inattendue lors de l'envoi d'email: {e}")
             return False
+    
+    async def send_ticket_taken_in_charge(self, to_email: str, ticket_subject: str, ticket_id: str):
+        """Envoie une notification au client que son ticket a été pris en charge"""
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None,
+                self._send_ticket_notification_sync,
+                to_email,
+                ticket_subject,
+                ticket_id
+            )
+            return result
+        except Exception as e:
+            print(f"❌ Erreur envoi email notification ticket: {e}")
+            return False
+    
+    def _send_ticket_notification_sync(self, to_email: str, ticket_subject: str, ticket_id: str):
+        """Version synchrone pour l'envoi de notification de ticket"""
+        try:
+            message = MIMEMultipart()
+            message["From"] = self.smtp_user
+            message["To"] = to_email
+            message["Subject"] = "Votre ticket a été pris en charge - HrayfiConnect"
+            
+            html_body = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background: #2563eb; color: white; padding: 20px; text-align: center; }}
+                    .content {{ padding: 20px; background: #f9fafb; border-radius: 8px; margin: 20px 0; }}
+                    .status-badge {{ display: inline-block; background: #10b981; color: white; 
+                                   padding: 8px 16px; border-radius: 20px; font-weight: bold; margin: 10px 0; }}
+                    .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; 
+                             color: #666; font-size: 14px; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>HrayfiConnect</h1>
+                    </div>
+                    
+                    <h2>Votre ticket a été pris en charge</h2>
+                    <p>Bonjour,</p>
+                    
+                    <div class="content">
+                        <p>Nous vous informons que votre ticket de support a été pris en charge par notre équipe.</p>
+                        
+                        <p><strong>Sujet du ticket :</strong> {ticket_subject}</p>
+                        
+                        <div class="status-badge">✓ En cours de traitement</div>
+                        
+                        <p>Notre équipe examine actuellement votre demande et vous répondra dans les plus brefs délais.</p>
+                        
+                        <p>Vous pouvez suivre l'évolution de votre ticket depuis votre espace personnel.</p>
+                    </div>
+                    
+                    <div class="footer">
+                        <p>Merci de votre confiance,<br>L'équipe HrayfiConnect</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+            
+            text_body = f"""
+            Votre ticket a été pris en charge - HrayfiConnect
+            
+            Bonjour,
+            
+            Nous vous informons que votre ticket de support a été pris en charge par notre équipe.
+            
+            Sujet du ticket : {ticket_subject}
+            Statut : En cours de traitement
+            
+            Notre équipe examine actuellement votre demande et vous répondra dans les plus brefs délais.
+            
+            Vous pouvez suivre l'évolution de votre ticket depuis votre espace personnel.
+            
+            Merci de votre confiance,
+            L'équipe HrayfiConnect
+            """
+            
+            message.attach(MIMEText(html_body, "html"))
+            
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.smtp_user, self.smtp_password)
+                server.send_message(message)
+            
+            print(f"✅ Notification ticket envoyée à {to_email}")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Erreur envoi notification ticket: {e}")
+            return False
+
+    async def send_ticket_completed(self, to_email: str, ticket_subject: str, ticket_id: str):
+        """Envoie une notification au client que son ticket a été résolu / complété"""
+        try:
+            loop = asyncio.get_event_loop()
+            result = await loop.run_in_executor(
+                None,
+                self._send_ticket_completed_sync,
+                to_email,
+                ticket_subject,
+                ticket_id
+            )
+            return result
+        except Exception as e:
+            print(f"❌ Erreur envoi email ticket complété: {e}")
+            return False
+
+    def _send_ticket_completed_sync(self, to_email: str, ticket_subject: str, ticket_id: str):
+        """Version synchrone pour l'envoi de notification de ticket complété"""
+        try:
+            message = MIMEMultipart()
+            message["From"] = self.smtp_user
+            message["To"] = to_email
+            message["Subject"] = "Votre ticket a été complété - HrayfiConnect"
+
+            html_body = f"""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="utf-8">
+                <style>
+                    body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                    .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                    .header {{ background: #2563eb; color: white; padding: 20px; text-align: center; }}
+                    .content {{ padding: 20px; background: #ecfdf5; border-radius: 8px; margin: 20px 0; }}
+                    .status-badge {{ display: inline-block; background: #16a34a; color: white;
+                                   padding: 8px 16px; border-radius: 20px; font-weight: bold; margin: 10px 0; }}
+                    .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd;
+                             color: #666; font-size: 14px; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>HrayfiConnect</h1>
+                    </div>
+
+                    <h2>Votre ticket a été complété</h2>
+                    <p>Bonjour,</p>
+
+                    <div class="content">
+                        <p>Nous vous informons que votre ticket de support a été entièrement traité et marqué comme complété.</p>
+
+                        <p><strong>Sujet du ticket :</strong> {ticket_subject}</p>
+
+                        <div class="status-badge">✓ Ticket complété</div>
+
+                        <p>Si vous considérez que le problème n'est pas totalement résolu, vous pouvez ouvrir un nouveau ticket depuis votre espace personnel.</p>
+                    </div>
+
+                    <div class="footer">
+                        <p>Merci de votre confiance,<br>L'équipe HrayfiConnect</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """
+
+            text_body = f"""
+            Votre ticket a été complété - HrayfiConnect
+
+            Bonjour,
+
+            Nous vous informons que votre ticket de support a été entièrement traité et marqué comme complété.
+
+            Sujet du ticket : {ticket_subject}
+            Statut : Complété
+
+            Si vous considérez que le problème n'est pas totalement résolu, vous pouvez ouvrir un nouveau ticket depuis votre espace personnel.
+
+            Merci de votre confiance,
+            L'équipe HrayfiConnect
+            """
+
+            message.attach(MIMEText(html_body, "html"))
+
+            with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
+                server.starttls()
+                server.login(self.smtp_user, self.smtp_password)
+                server.send_message(message)
+
+            print(f"✅ Notification ticket complété envoyée à {to_email}")
+            return True
+        except Exception as e:
+            print(f"❌ Erreur envoi notification ticket complété (sync): {e}")
+            return False
 
 # Instance globale
 email_service = EmailService()

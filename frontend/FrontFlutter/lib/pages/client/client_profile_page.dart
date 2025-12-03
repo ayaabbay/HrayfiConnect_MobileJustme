@@ -61,12 +61,14 @@ class _ClientProfilePageState extends State<ClientProfilePage> {
   Future<void> _logout() async {
     try {
       await AuthService.logout();
-      if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const RoleSelectorPage()),
-        );
-      }
+      if (!mounted) return;
+
+      // Rediriger proprement vers la page de connexion et
+      // vider toute la pile de navigation pour empêcher le retour au dashboard
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (route) => false,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

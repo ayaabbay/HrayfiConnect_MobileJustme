@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/storage_service.dart';
 import 'admin_dashboard_page.dart';
 import 'admin_users_page.dart';
 import 'admin_tickets_page.dart';
@@ -20,6 +21,24 @@ class _AdminShellState extends State<AdminShell> {
     AdminBookingsPage(),
     AdminTicketsPage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _ensureAuthenticated());
+  }
+
+  Future<void> _ensureAuthenticated() async {
+    final token = await StorageService.getToken();
+    if (!mounted) return;
+
+    if (token == null) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/login',
+        (route) => false,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

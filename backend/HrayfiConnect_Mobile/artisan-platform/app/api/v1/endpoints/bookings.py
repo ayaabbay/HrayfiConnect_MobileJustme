@@ -70,6 +70,37 @@ async def create_booking(
             detail=f"Erreur lors de la création de la réservation: {str(e)}"
         )
 
+@router.get("/", response_model=List[BookingDetailedResponse])
+async def get_all_bookings(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=1000),  # Limite augmentée pour les admins
+    booking_status: Optional[BookingStatus] = Query(None, alias="status"),
+    current_user: dict = Depends(get_current_user),
+    booking_manager: BookingManager = Depends(get_booking_manager)
+):
+    """
+    Récupère toutes les réservations (Admin seulement)
+    """
+    if current_user.get("user_type") != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seuls les administrateurs peuvent voir toutes les réservations"
+        )
+    
+    query = {}
+    
+    # Filtrer par statut si spécifié
+    if booking_status:
+        query["status"] = booking_status
+    
+    bookings = await booking_manager.get_bookings_with_details(query, skip, limit)
+    
+    # Convertir ObjectId en string pour les bookings
+    for booking in bookings:
+        booking["id"] = str(booking["_id"])
+    
+    return [BookingDetailedResponse(**booking) for booking in bookings]
+
 @router.get("/my-bookings", response_model=List[BookingDetailedResponse])
 async def get_my_bookings(
     skip: int = Query(0, ge=0),

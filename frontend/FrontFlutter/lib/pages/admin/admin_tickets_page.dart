@@ -230,6 +230,52 @@ class _AdminTicketsPageState extends State<AdminTicketsPage> {
               },
               child: const Text('Prendre en charge'),
             ),
+          if (ticket.status == TicketStatus.inProgress)
+            FilledButton.tonal(
+              onPressed: () async {
+                try {
+                  if (mounted) {
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
+                  }
+
+                  await TicketService.updateTicketStatus(
+                    ticket.id,
+                    status: TicketStatus.resolved,
+                  );
+
+                  _loadTickets();
+
+                  if (mounted) {
+                    Navigator.of(context).pop(); // dialog de chargement
+                    Navigator.of(context).pop(); // dialog de détails
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Ticket marqué comme complété. Un email a été envoyé au client.'),
+                        backgroundColor: Colors.green,
+                        duration: Duration(seconds: 4),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    Navigator.of(context).pop(); // dialog de chargement si ouvert
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Erreur: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Marquer comme complété'),
+            ),
         ],
       ),
     );
