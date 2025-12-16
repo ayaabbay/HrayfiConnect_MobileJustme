@@ -6,7 +6,7 @@ class ApiConfig {
   static String get baseUrl {
     // Pour le web, utiliser localhost
     if (kIsWeb) {
-      return 'http://localhost:8000';
+      return 'http://192.168.0.138:8000';
     }
     
     // Pour les plateformes mobiles, vérifier l'OS

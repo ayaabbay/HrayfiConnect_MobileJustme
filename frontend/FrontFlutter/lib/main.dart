@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'pages/role_selector_page.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/auth/register_page.dart';
 import 'pages/client/client_shell.dart';
