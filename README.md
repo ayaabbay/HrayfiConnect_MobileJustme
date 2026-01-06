@@ -481,16 +481,6 @@ Pour de l'aide:
 
 - [ ] Intégration paiement en ligne (Stripe)
 - [ ] Notifications push
-- [Roadmap
-
-- [ ] Intégration paiement en ligne (Stripe)
-- [ ] Notifications push
-- [ ] Système de recommandation IA
-- [ ] Statistiques avancées
-- [ ] Internationalisation complète (i18n)
-- [ ] Mode hors ligne
-- [ ] Video call intégrée
-- [ ] Programme de fidélité
 
 ---
 
