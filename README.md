@@ -1,4 +1,4 @@
-# 🔨 HrayfiConnect - Plateforme de Mise en Relation Artisans & Clients
+# HrayfiConnect - Plateforme de Mise en Relation Artisans & Clients
 
 <div align="center">
 
@@ -6,17 +6,18 @@
 ![Python](https://img.shields.io/badge/Python-3.10+-green?logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-orange?logo=fastapi)
 ![MongoDB](https://img.shields.io/badge/MongoDB-4.5+-green?logo=mongodb)
+![Cloudinary](https://img.shields.io/badge/Cloudinary-1.38+-blue?logo=cloudinary)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 
 Une application mobile multiplateforme pour connecter artisans et clients, avec système de réservation, messagerie en temps réel et gestion administrative.
 
-[🚀 Démarrage Rapide](#-démarrage-rapide) • [📱 Fonctionnalités](#-fonctionnalités) • [🏗️ Architecture](#-architecture) • [📚 Documentation](#-documentation)
+[Démarrage Rapide](#démarrage-rapide) | [Fonctionnalités](#fonctionnalités) | [Architecture](#architecture) | [Documentation](#documentation) | [Technologies](#technologies-complètes)
 
 </div>
 
 ---
 
-## 📋 Vue d'ensemble
+## Vue d'ensemble
 
 **HrayfiConnect** est une plateforme complète permettant:
 - **Clients** : Trouver des artisans qualifiés, réserver des services, échanger en temps réel
@@ -25,7 +26,7 @@ Une application mobile multiplateforme pour connecter artisans et clients, avec 
 
 ---
 
-## 🚀 Démarrage Rapide
+## Démarrage Rapide
 
 ### Prérequis
 
@@ -86,68 +87,64 @@ flutter run
 
 ---
 
-## 📱 Fonctionnalités
+## Fonctionnalités
 
-### 👤 **Authentification**
-- ✅ Inscription (Clients & Artisans)
-- ✅ Connexion/Déconnexion
-- ✅ Récupération de mot de passe
-- ✅ Gestion de sessions avec JWT
-- ✅ Refresh token automatique
+### Authentification
+- Inscription (Clients & Artisans)
+- Connexion/Déconnexion
+- Récupération de mot de passe
+- Gestion de sessions avec JWT
+- Refresh token automatique
 
-### 🔍 **Clients**
-- ✅ Recherche et découverte d'artisans
-- ✅ Filtrage par catégorie, localité, évaluation
-- ✅ Consultation des profils artisans
-- ✅ Réservation de services
-- ✅ Suivi des réservations
-- ✅ Avis et notation des artisans
-- ✅ Messagerie en temps réel (WebSocket)
-- ✅ Gestion du profil
+### Clients
+- Recherche et découverte d'artisans
+- Filtrage par catégorie, localité, évaluation
+- Consultation des profils artisans
+- Réservation de services
+- Suivi des réservations
+- Avis et notation des artisans
+- Messagerie en temps réel (WebSocket)
+- Gestion du profil
 
-### 🎯 **Artisans**
-- ✅ Gestion du profil professionnel
-- ✅ Portfolio de services
-- ✅ Calendrier de disponibilités
-- ✅ Gestion des réservations (accepter/refuser)
-- ✅ Dashboard des demandes urgentes
-- ✅ Messagerie avec les clients
-- ✅ Historique des évaluations
-- ✅ Statistiques personnelles
+### Artisans
+- Gestion du profil professionnel
+- Portfolio de services
+- Calendrier de disponibilités
+- Gestion des réservations (accepter/refuser)
+- Dashboard des demandes urgentes
+- Messagerie avec les clients
+- Historique des évaluations
+- Statistiques personnelles
 
-### ⚙️ **Administration**
-- ✅ Dashboard système
-- ✅ Gestion complète des utilisateurs
-- ✅ Modération des contenus
-- ✅ Gestion des catégories de services
-- ✅ Supervision des réservations
-- ✅ Gestion des tickets support
-- ✅ Statistiques globales
-- ✅ Vérification des artisans
+### Administration
+- Dashboard système
+- Gestion complète des utilisateurs
+- Modération des contenus
+- Gestion des catégories de services
+- Supervision des réservations
+- Gestion des tickets support
+- Statistiques globales
+- Vérification des artisans
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ### Stack Technique
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      CLIENTS MOBILES                         │
-│          Flutter (iOS, Android, Web, macOS)                  │
-└──────────────────────────────────────────────────────────────┘
-                          ↓
-                   [HTTP + WebSocket]
-                          ↓
-┌──────────────────────────────────────────────────────────────┐
-│                    BACKEND API                               │
-│   FastAPI • Uvicorn • CORS • JWT Authentication             │
-└──────────────────────────────────────────────────────────────┘
-                          ↓
-        ┌─────────────────┼─────────────────┐
-        ↓                 ↓                 ↓
-    MongoDB           Cloudinary      WebSocket
-   (Données)         (Images)        (Chat)
+CLIENTS MOBILES
+Flutter (iOS, Android, Web, macOS)
+              |
+         [HTTP + WebSocket]
+              |
+BACKEND API
+FastAPI + Uvicorn + CORS + JWT
+              |
+    +---------+---------+---------+
+    |         |         |         |
+  MongoDB  Cloudinary  WebSocket  Email
+ (Donnees)  (Images)   (Chat)   (SMTP)
 ```
 
 ### Structure des Répertoires
@@ -158,39 +155,64 @@ HrayfiConnect_MobileJustme/
 ├── 📁 backend/
 │   └── HrayfiConnect_Mobile/artisan-platform/
 │       ├── run.py                    # Point d'entrée du serveur
-│       ├── requirements.txt          # Dépendances Python
-│       └── app/
-│           ├── main.py              # Configuration FastAPI
-│           ├── api/
-│           │   └── v1/
-│           │       ├── endpoints/   # Routes (auth, users, bookings, etc.)
-│           │       └── websockets/  # WebSocket pour chat
-│           ├── models/              # Modèles MongoDB (Pydantic)
-│           ├── schemas/             # Schémas de validation
-│           ├── services/            # Logique métier
-│           ├── core/                # Configuration (BD, Cloudinary)
-│           └── utils/               # Utilitaires
-│
-├── 📁 frontend/
-│   └── FrontFlutter/
-│       ├── pubspec.yaml             # Configuration Flutter
-│       ├── lib/
-│       │   ├── main.dart            # Point d'entrée
-│       │   ├── config/              # Configuration API
-│       │   ├── models/              # Modèles de données (Dart)
-│       │   ├── pages/               # Écrans (auth, client, artisan, admin, chat, reviews)
-│       │   ├── services/            # Services API (HTTP, WebSocket)
-│       │   ├── repositories/        # Gestion de données
-│       │   ├── providers/           # State management
-│       │   ├── theme/               # Thème et styles
-│       │   └── widgets/             # Composants réutilisables
-│       └── [android/, ios/]         # Configurations natives
-│
-└── 📁 .git/                          # Contrôle de version
-```
-
----
-
+|
++-- backend/
+|   +-- HrayfiConnect_Mobile/artisan-platform/
+|       +-- run.py                    (Point d'entree du serveur)
+|       +-- requirements.txt          (Dependances Python)
+|       +-- app/
+|           +-- main.py              (Configuration FastAPI)
+|           +-- api/
+|           |   +-- v1/
+|           |       +-- endpoints/   (Routes: auth, users, bookings, etc.)
+|           |       +-- api.py       (Router principal)
+|           |       +-- websockets/  (WebSocket pour chat)
+|           +-- models/              (Modeles MongoDB + Pydantic)
+|           +-- schemas/             (Schemas de validation)
+|           +-- services/            (Logique metier)
+|           +-- core/
+|           |   +-- database.py      (Connexion MongoDB Motor)
+|           |   +-- cloudinary_config.py
+|           |   +-- security.py      (JWT, Hachage)
+|           +-- utils/               (Utilitaires)
+|
++-- frontend/
+|   +-- FrontFlutter/
+|       +-- pubspec.yaml             (Configuration Flutter)
+|       +-- lib/
+|       |   +-- main.dart            (Point d'entree)
+|       |   +-- config/
+|       |   |   +-- api_config.dart  (URL API selon plateforme)
+|       |   +-- models/              (Auth, User, Artisan, Booking, etc.)
+|       |   +-- pages/
+|       |   |   +-- auth/            (Login, Register)
+|       |   |   +-- client/          (Home, Search, Profile)
+|       |   |   +-- artisan/         (Portfolio, Calendar, Dashboard)
+|       |   |   +-- admin/           (Users Management, Dashboard)
+|       |   |   +-- chat/            (Messages, Conversations)
+|       |   |   +-- reviews/         (List, Form)
+|       |   +-- services/
+|    |   |   +-- api_service.dart      (HTTP calls)
+|       |   |   +-- auth_service.dart     (Auth)
+|       |   |   +-- artisan_service.dart  (Artisans)
+|       |   |   +-- booking_service.dart  (Reservations)
+|       |   |   +-- chat_service.dart     (Messaging)
+|       |   |   +-- review_service.dart   (Reviews)
+|       |   |   +-- user_service.dart     (Users)
+|       |   |   +-- storage_service.dart  (LocalStorage)
+|       |   |   +-- upload_service.dart   (File upload)
+|       |   |   +-- admin_service.dart    (Admin)
+|       |   |   +-- ticket_service.dart   (Support)
+|       |   +-- repositories/        (Data layer)
+|       |   +-- providers/           (State management)
+|       |   +-- theme/               (AppTheme)
+|       |   +-- widgets/             (Composants reutilisables)
+|       +-- android/                 (Config Android)
+|       +-- ios/                     (Config iOS)
+|       +-- pubspec.lock             (Lock file)
+|
++-- .git/                             (Version control)
++-- README.md                         (Ce fichier)
 ## 🔌 API Endpoints
 
 ### Base URL
@@ -226,7 +248,7 @@ HrayfiConnect_MobileJustme/
 | `GET` | `/bookings/stats/me` | Statistiques personnelles |
 
 ### Chat
-| Méthode | Endpoint | Description |
+| Mode | Endpoint | Description |
 |---------|----------|-------------|
 | `WS` | `/chat/ws/{user_id}` | WebSocket chat |
 | `GET` | `/chat/messages/{user_id}` | Historique messages |
@@ -247,7 +269,7 @@ HrayfiConnect_MobileJustme/
 
 ---
 
-## 🔐 Authentification & Sécurité
+## Authentification & Sécurité
 
 ### JWT Token
 ```bash
@@ -310,36 +332,7 @@ POST /auth/refresh
 }
 
 // Messages
-{
-  _id: ObjectId,
-  sender_id: ObjectId,
-  recipient_id: ObjectId,
-  content: string,
-  created_at: Date
-}
-
-// Reviews
-{
-  _id: ObjectId,
-  client_id: ObjectId,
-  artisan_id: ObjectId,
-  rating: number,
-  comment: string,
-  created_at: Date
-}
-```
-
----
-
-## 🛠️ Développement
-
-### Technologies Frontend
-
-```yaml
-Language: Dart 3.0+
-Framework: Flutter 3.3+
-UI Kit: Material Design 3
-State Management: Provider Pattern
+{Développementte Management: Provider Pattern
 HTTP Client: http package
 Storage Local: shared_preferences
 WebSocket: web_socket_channel
@@ -372,7 +365,7 @@ Email: email-validator
 MONGODB_URL=mongodb://localhost:27017
 DATABASE_NAME=hrayficonnect
 
-# Cloudinary
+# Cdinary
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
@@ -410,7 +403,7 @@ class ApiConfig {
 echo "web: uvicorn app.main:app --host 0.0.0.0 --port \$PORT" > Procfile
 
 # Déployer
-git push heroku main
+gitsh heroku main
 ```
 
 ### Frontend (PlayStore/AppStore)
@@ -435,7 +428,7 @@ flutter build web --release
 | MongoDB connection error | Démarrez MongoDB: `brew services start mongodb-community` |
 | CORS error | Vérifiez les origins autorisées dans `main.py` |
 | API 404 | Vérifiez l'URL API dans `api_config.dart` |
-| WebSocket connection failed | Assurez-vous que le backend est en cours d'exécution |
+| Wocket connection failed | Assurez-vous que le backend est en cours d'exécution |
 | Flutter doctor errors | Exécutez `flutter doctor` et suivez les instructions |
 
 ---
@@ -457,7 +450,7 @@ Les contributions sont bienvenues! Veuillez:
 2. Créer une branche (`git checkout -b feature/AmazingFeature`)
 3. Commit les changements (`git commit -m 'Add AmazingFeature'`)
 4. Push vers la branche (`git push origin feature/AmazingFeature`)
-5. Ouvrir une Pull Request
+5. rir une Pull Request
 
 ---
 
@@ -469,13 +462,13 @@ Ce projet est sous license **MIT**. Voir [LICENSE](LICENSE) pour plus de détail
 
 ## 👥 Équipe
 
-- **Backend Lead** : Développement FastAPI/MongoDB
+- *ckend Lead** : Développement FastAPI/MongoDB
 - **Frontend Lead** : Développement Flutter
 - **DevOps** : Déploiement et infrastructure
 
 ---
 
-## 📞 Support
+## Support
 
 Pour de l'aide:
 - 📧 Email: support@hrayficonnect.com
@@ -488,6 +481,10 @@ Pour de l'aide:
 
 - [ ] Intégration paiement en ligne (Stripe)
 - [ ] Notifications push
+- [Roadmap
+
+- [ ] Intégration paiement en ligne (Stripe)
+- [ ] Notifications push
 - [ ] Système de recommandation IA
 - [ ] Statistiques avancées
 - [ ] Internationalisation complète (i18n)
@@ -497,10 +494,93 @@ Pour de l'aide:
 
 ---
 
-<div align="center">
+## Technologies Completes
 
-**Construit avec ❤️ pour connecter artisans et clients**
+### FRONTEND - FLUTTER
 
-⭐ Si ce projet vous plaît, n'oubliez pas de donner une star!
+Langage: Dart 3.0+
+Framework: Flutter 3.3+
+UI Kit: Material Design 3
 
-</div>
+Dependances principales:
+- flutter: SDK de base
+- http: 1.1.0 (Requetes HTTP)
+- shared_preferences: 2.2.2 (Stockage local)
+- intl: 0.19.0 (Internationalisation)
+- image_picker: 1.0.7 (Selection images)
+- web_socket_channel: 2.4.0 (WebSocket - Chat realtime)
+- cupertino_icons: 1.0.8 (Icones iOS)
+
+Dev Dependencies:
+- flutter_test: SDK
+- flutter_lints: 4.0.0 (Linting)
+
+### BACKEND - FASTAPI + PYTHON
+
+Langage: Python 3.10+
+Framework: FastAPI 0.104+
+Server: Uvicorn 0.24+
+Port: 8000
+
+Dependances principales:
+- fastapi: 0.104+ (Framework web)
+- uvicorn: 0.24+ (Serveur ASGI)
+- motor: 3.3+ (Async MongoDB driver)
+- pymongo: 4.5+ (Driver MongoDB)
+- bcrypt: 4.0+ (Hachage mots de passe)
+- python-jose: 3.3+ (JWT tokens)
+- passlib: 1.7.4 (Password hashing utility)
+- cryptography: 41.0+ (Chiffrement)
+- pydantic: 2.5+ (Validation donnees)
+- pydantic-settings: 2.1+ (Configuration)
+- email-validator: 2.0+ (Validation emails)
+- python-multipart: 0.0.6 (Upload fichiers)
+- PyJWT: 2.8+ (JWT handling)
+- cloudinary: 1.38+ (Gestion images/media)
+- websockets: 10.0+ (WebSocket support)
+
+### SERVICES EXTERNES
+
+Cloudinary API: 1.38+
+- Stockage et delivery d'images
+- Compression automatique
+- Gestion des assets media
+- CDN global
+
+MongoDB: 4.5+
+- Base de donnees NoSQL
+- Collections pour Users, Bookings, Messages, Reviews, etc.
+- Indexation pour queries optimisees
+
+### AUTHENTIFICATION & SECURITE
+
+Authentification: JWT (JSON Web Tokens)
+- Algoritme: HS256
+- Token expiration: Configurable
+- Refresh token: Support
+
+Hachage: Bcrypt (salt rounds: 12)
+- Mots de passe securises
+- Comparaison sécurisée
+
+CORS: Activé pour toutes origines (dev mode)
+- A restreindre en production
+
+### PLATFORMS SUPPORTEES
+
+Frontend:
+- iOS 12+ (via Xcode)
+- Android 5.0+ (API 21+)
+- Web (Chrome, Firefox, Safari)
+- macOS 10.14+
+
+Backend:
+- Linux (Heroku, Railway, AWS)
+- macOS
+- Windows (via WSL)
+
+---
+
+Construit avec dedication pour connecter artisans et clients
+
+Si ce projet vous plait, donnez une star!
